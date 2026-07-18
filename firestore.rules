@@ -1,0 +1,89 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function meuUsuario() {
+      return get(/databases/$(database)/documents/bi_usuarios/$(request.auth.uid)).data;
+    }
+    function usuarioAtivo() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/bi_usuarios/$(request.auth.uid)) &&
+        meuUsuario().ativo == true;
+    }
+    function isMaster() {
+      return usuarioAtivo() && meuUsuario().role == 'master';
+    }
+    function minhaCampanha() {
+      return meuUsuario().campanhaId;
+    }
+    function pertenceACampanha(campanhaId) {
+      return usuarioAtivo() && (isMaster() || minhaCampanha() == campanhaId);
+    }
+
+    // marcador criado junto com a primeira conta master
+    match /bi_config/bootstrap {
+      allow get: if true;
+      allow create: if request.auth != null && !exists(/databases/$(database)/documents/bi_config/bootstrap);
+      allow update, delete: if false;
+    }
+    // config antiga (bi_config/geral) - leitura mantida so para a rotina de migracao
+    match /bi_config/{docId} {
+      allow read: if usuarioAtivo();
+      allow write: if false;
+    }
+
+    match /bi_usuarios/{userId} {
+      allow read: if request.auth != null && (request.auth.uid == userId || isMaster() ||
+        (usuarioAtivo() && resource.data.campanhaId != null && resource.data.campanhaId == minhaCampanha()));
+
+      // primeira conta (master) - so enquanto nao existir o marcador bootstrap
+      allow create: if request.auth != null && request.auth.uid == userId
+        && request.resource.data.role == 'master'
+        && !exists(/databases/$(database)/documents/bi_config/bootstrap);
+
+      // master cria qualquer usuario, para qualquer campanha
+      allow create: if isMaster();
+
+      // admin de campanha cria coordenador para a PROPRIA campanha
+      allow create: if usuarioAtivo() && meuUsuario().role == 'admin'
+        && request.resource.data.role == 'coordenador'
+        && request.resource.data.campanhaId == minhaCampanha();
+
+      // migracao: admin do formato antigo (sem campanhaId) se auto-promove a master
+      allow update: if request.auth.uid == userId
+        && resource.data.role == 'admin' && !('campanhaId' in resource.data)
+        && request.resource.data.role == 'master';
+
+      // master atualiza qualquer usuario; admin atualiza usuarios da propria campanha
+      allow update: if isMaster() ||
+        (usuarioAtivo() && meuUsuario().role == 'admin' && resource.data.campanhaId == minhaCampanha());
+
+      // master exclui qualquer usuario; admin exclui coordenadores da propria campanha
+      allow delete: if isMaster() ||
+        (usuarioAtivo() && meuUsuario().role == 'admin' && resource.data.campanhaId == minhaCampanha() && resource.data.role == 'coordenador');
+    }
+
+    match /bi_campanhas/{campanhaId} {
+      allow read: if pertenceACampanha(campanhaId);
+      allow create: if isMaster();
+      allow update: if pertenceACampanha(campanhaId);
+      allow delete: if isMaster();
+
+      match /liderancas/{id} { allow read, write: if pertenceACampanha(campanhaId); }
+      match /materiais/{id} { allow read, write: if pertenceACampanha(campanhaId); }
+      match /remessas/{id} { allow read, write: if pertenceACampanha(campanhaId); }
+      match /metas/{id} { allow read, write: if pertenceACampanha(campanhaId); }
+      match /eventos/{id} { allow read, write: if pertenceACampanha(campanhaId); }
+      match /chapaSim/{id} { allow read, write: if pertenceACampanha(campanhaId); }
+    }
+
+    // colecoes do formato antigo (single-tenant) - acesso restrito ao master,
+    // mantidas apenas para a rotina de migracao conseguir copiar os dados uma vez.
+    match /bi_liderancas/{id} { allow read, write: if isMaster(); }
+    match /bi_materiais/{id} { allow read, write: if isMaster(); }
+    match /bi_remessas/{id} { allow read, write: if isMaster(); }
+    match /bi_metas/{id} { allow read, write: if isMaster(); }
+    match /bi_eventos/{id} { allow read, write: if isMaster(); }
+    match /bi_chapa_sim/{id} { allow read, write: if isMaster(); }
+  }
+}

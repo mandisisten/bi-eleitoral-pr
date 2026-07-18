@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BI Paraná — Painel Municipal e Eleitoral</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{
+  --bg:#0d1220; --bg2:#141b2e; --card:#1a2338; --card2:#212c46; --border:#2a3552;
+  --tx:#e8edf7; --tx2:#93a1c0; --tx3:#5f6d8c;
+  --pri:#3b82f6; --pri2:#60a5fa; --ok:#22c55e; --warn:#f59e0b; --err:#ef4444; --roxo:#a78bfa;
+  --verde-pr:#10b981;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--tx);font-size:14px}
+a{color:var(--pri2)}
+button{font-family:inherit}
+input,select,textarea{font-family:inherit;font-size:13px;background:var(--bg2);border:1px solid var(--border);color:var(--tx);border-radius:8px;padding:8px 10px;outline:none;width:100%}
+input:focus,select:focus,textarea:focus{border-color:var(--pri)}
+label{font-size:12px;color:var(--tx2);display:block;margin-bottom:4px}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:5px}
+::-webkit-scrollbar-track{background:transparent}
+
+/* ===== LOGIN ===== */
+#tela-login{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at top,#16213c 0%,var(--bg) 60%);z-index:100}
+.login-box{width:380px;max-width:92vw;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:34px}
+.login-box h1{font-size:20px;margin-bottom:4px}
+.login-box .sub{color:var(--tx2);font-size:13px;margin-bottom:24px}
+.login-box .campo{margin-bottom:14px}
+.msg-erro{color:var(--err);font-size:12px;margin-top:10px;min-height:16px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--pri);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+.btn:hover{background:var(--pri2)}
+.btn.full{width:100%}
+.btn.sec{background:var(--bg2);border:1px solid var(--border);color:var(--tx)}
+.btn.sec:hover{border-color:var(--pri)}
+.btn.ok{background:var(--ok)} .btn.ok:hover{background:#4ade80}
+.btn.danger{background:var(--err)} .btn.danger:hover{background:#f87171}
+.btn.mini{padding:4px 10px;font-size:12px;border-radius:6px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.link-btn{background:none;border:none;color:var(--pri2);cursor:pointer;font-size:12px;text-decoration:underline}
+
+/* ===== LAYOUT ===== */
+#app{display:none;min-height:100vh}
+#sidebar{position:fixed;left:0;top:0;bottom:0;width:225px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:50}
+.logo{padding:20px 18px 14px;border-bottom:1px solid var(--border)}
+.logo b{font-size:16px;color:var(--tx)}
+.logo span{display:block;font-size:11px;color:var(--verde-pr);margin-top:2px;font-weight:600;letter-spacing:.4px}
+nav{flex:1;padding:12px 10px;overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;color:var(--tx2);cursor:pointer;font-size:13.5px;margin-bottom:2px;border:none;background:none;width:100%;text-align:left}
+.nav-item:hover{background:var(--card);color:var(--tx)}
+.nav-item.ativo{background:var(--pri);color:#fff;font-weight:600}
+.nav-item .ico{width:20px;text-align:center;font-size:15px}
+#user-box{padding:14px 18px;border-top:1px solid var(--border);font-size:12px}
+#user-box .nome{font-weight:700;color:var(--tx)}
+#user-box .papel{color:var(--verde-pr);font-size:11px;margin-bottom:8px}
+#main{margin-left:225px;padding:24px 28px;max-width:1500px}
+.page{display:none}
+.page.ativa{display:block}
+.page-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+.page-header h2{font-size:20px}
+.page-header .sub{color:var(--tx2);font-size:12.5px;margin-top:3px}
+
+/* ===== COMPONENTES ===== */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:18px}
+.card-kpi{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
+.card-kpi .rotulo{font-size:11.5px;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px}
+.card-kpi .valor{font-size:22px;font-weight:800;margin-top:6px}
+.card-kpi .extra{font-size:11.5px;color:var(--tx3);margin-top:4px}
+.card-kpi.destaque{border-color:var(--pri);background:linear-gradient(135deg,var(--card),#1a2a4d)}
+.painel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px}
+.painel h3{font-size:14px;margin-bottom:12px;color:var(--tx)}
+.chart-box{position:relative;height:280px}
+.chart-box.baixo{height:220px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+@media(max-width:1100px){.grid-2,.grid-3{grid-template-columns:1fr}}
+.toolbar{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:14px}
+.toolbar .campo{min-width:150px}
+.toolbar .campo.grande{flex:1;min-width:220px}
+
+table.tab{width:100%;border-collapse:collapse;font-size:13px}
+table.tab th{color:var(--tx2);text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;cursor:pointer;user-select:none}
+table.tab th.num,table.tab td.num{text-align:right}
+table.tab td{padding:8px 10px;border-bottom:1px solid #1e2740;vertical-align:middle}
+table.tab tbody tr:hover{background:var(--card2)}
+table.tab tr.clicavel{cursor:pointer}
+.tag{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700}
+.tag.azul{background:#1e3a8a55;color:#93c5fd}
+.tag.verde{background:#14532d55;color:#86efac}
+.tag.amarelo{background:#78350f55;color:#fcd34d}
+.tag.vermelho{background:#7f1d1d55;color:#fca5a5}
+.tag.roxo{background:#4c1d9555;color:#c4b5fd}
+.tag.cinza{background:#37415155;color:#cbd5e1}
+.barra-prog{height:7px;background:var(--bg2);border-radius:4px;overflow:hidden;min-width:70px}
+.barra-prog>div{height:100%;background:var(--pri);border-radius:4px}
+.vazio{padding:30px;text-align:center;color:var(--tx3);font-size:13px}
+
+/* mapa */
+#mapa,#mapa-cand{height:520px;border-radius:10px;background:var(--bg2)}
+.leaflet-container{background:var(--bg2)!important;font:inherit}
+.mapa-legenda{background:var(--card);padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:11px;color:var(--tx);line-height:1.7}
+.mapa-legenda i{display:inline-block;width:14px;height:11px;margin-right:5px;border-radius:2px;vertical-align:-1px}
+
+/* modal */
+#modal-fundo{position:fixed;inset:0;background:#000a;backdrop-filter:blur(3px);z-index:80;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:40px 16px}
+#modal-fundo.aberto{display:flex}
+#modal-caixa{background:var(--card);border:1px solid var(--border);border-radius:14px;width:640px;max-width:100%;padding:24px;position:relative}
+#modal-caixa.largo{width:1000px}
+#modal-caixa h3{font-size:16px;margin-bottom:16px;padding-right:30px}
+#modal-fechar{position:absolute;top:14px;right:14px;background:none;border:none;color:var(--tx2);font-size:20px;cursor:pointer}
+#modal-fechar:hover{color:var(--tx)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-grid .span2{grid-column:span 2}
+@media(max-width:640px){.form-grid{grid-template-columns:1fr}.form-grid .span2{grid-column:span 1}}
+.modal-acoes{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+
+/* toast */
+#toasts{position:fixed;bottom:20px;right:20px;z-index:120;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--card2);border:1px solid var(--border);border-left:4px solid var(--pri);padding:11px 16px;border-radius:8px;font-size:13px;min-width:230px;box-shadow:0 8px 24px #0008;animation:subir .25s}
+.toast.ok{border-left-color:var(--ok)} .toast.erro{border-left-color:var(--err)}
+@keyframes subir{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
+
+/* abas */
+.abas{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:16px}
+.aba{padding:9px 18px;font-size:13px;color:var(--tx2);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent}
+.aba.ativa{color:var(--tx);border-bottom-color:var(--pri);font-weight:600}
+
+/* detalhe município */
+.det-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.det-item{background:var(--bg2);border-radius:9px;padding:10px 12px}
+.det-item .r{font-size:10.5px;color:var(--tx3);text-transform:uppercase}
+.det-item .v{font-size:15px;font-weight:700;margin-top:3px}
+.pref-linha{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #1e2740;font-size:13px}
+.pref-linha .ano{font-weight:800;color:var(--tx2);width:44px}
+
+/* impressão de relatórios */
+@media print{
+  body{background:#fff;color:#000}
+  #sidebar,#toasts,.no-print,.toolbar,.page-header .acoes{display:none!important}
+  #main{margin:0;padding:0;max-width:none}
+  .page{display:none}
+  #page-relatorios{display:block}
+  .painel{border:none;background:#fff;padding:0}
+  table.tab th{color:#333;border-bottom:2px solid #333}
+  table.tab td{color:#000;border-bottom:1px solid #ccc}
+  .tag{border:1px solid #999;background:none!important;color:#000!important}
+  #rel-cabecalho-print{display:block!important;margin-bottom:14px}
+}
+#rel-cabecalho-print{display:none}
+
+/* ===== MOBILE ===== */
+.btn-menu-mobile{display:none;position:fixed;top:14px;left:14px;z-index:60;background:var(--card);border:1px solid var(--border);color:var(--tx);width:42px;height:42px;border-radius:9px;font-size:19px;cursor:pointer}
+#sidebar-backdrop{display:none;position:fixed;inset:0;background:#000a;z-index:45}
+.mobile-home{display:none}
+@media(max-width:860px){
+  .btn-menu-mobile{display:block}
+  #sidebar{transform:translateX(-100%);transition:transform .22s ease;z-index:70;width:250px}
+  #sidebar.aberta{transform:translateX(0)}
+  #sidebar-backdrop.aberta{display:block}
+  #main{margin-left:0;padding:70px 14px 24px}
+  .page-header{flex-direction:column;align-items:flex-start!important}
+  .page-header .acoes{width:100%}
+  .page-header .acoes .btn{width:100%}
+  #modal-fundo{padding:16px 8px}
+  #modal-caixa,#modal-caixa.largo{width:100%;padding:20px 16px}
+  table.tab{font-size:12px}
+  table.tab th,table.tab td{padding:7px 6px}
+  .cards{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:9px}
+  .det-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
+  .toolbar .campo,.toolbar .campo.grande{min-width:0;flex:1 1 100%}
+  #mapa,#mapa-cand{height:360px}
+
+  /* home mobile estilo app: só na página Visão Geral.
+     O mapa principal continua aparecendo (fica após "Atividade recente");
+     cards de KPI (duplicados na home) e os gráficos somem. */
+  #page-dashboard .dash-desktop{display:block}
+  #page-dashboard .dash-desktop > .cards,
+  #page-dashboard .dash-desktop > .grid-2{display:none}
+  #page-dashboard .mobile-home{display:block}
+  .mh-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+  .mh-saudacao{font-size:19px;font-weight:800}
+  .mh-papel{font-size:12.5px;color:var(--tx2);margin-top:2px}
+  .mh-avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--pri),var(--roxo));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;color:#fff;flex-shrink:0}
+  .mh-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px}
+  .mh-kpi{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 8px;text-align:center}
+  .mh-kpi .v{font-size:18px;font-weight:800}
+  .mh-kpi .r{font-size:10px;color:var(--tx3);margin-top:3px;line-height:1.3}
+  .mh-secao-titulo{font-size:14.5px;font-weight:700;margin:20px 0 10px}
+  .mh-modulos{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .mh-modulo{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:flex-start;gap:12px;color:var(--tx);font-size:13px;font-weight:600;cursor:pointer;text-align:left}
+  .mh-modulo:active{background:var(--card2)}
+  .mh-ico{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:17px}
+  .mh-atividade-item{display:flex;gap:10px;align-items:flex-start;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:12.5px}
+  .mh-atividade-ico{font-size:15px;flex-shrink:0}
+  .mh-atividade-texto{flex:1;color:var(--tx2);line-height:1.4}
+  .mh-atividade-texto b{color:var(--tx)}
+  .mh-atividade-data{font-size:10.5px;color:var(--tx3);white-space:nowrap;flex-shrink:0}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div id="tela-login">
+  <div class="login-box">
+    <h1>BI Paraná</h1>
+    <div class="sub">Painel Municipal e Eleitoral — 399 municípios</div>
+    <div id="login-form">
+      <div class="campo"><label>Usuário</label><input id="login-user" autocomplete="username"></div>
+      <div class="campo"><label>Senha</label><input id="login-senha" type="password" autocomplete="current-password"></div>
+      <button class="btn full" id="btn-entrar">Entrar</button>
+      <div class="msg-erro" id="login-erro"></div>
+      <div style="text-align:center;margin-top:8px"><button class="link-btn" id="link-bootstrap" style="display:none">Primeiro acesso — criar conta master</button></div>
+    </div>
+    <div id="bootstrap-form" style="display:none">
+      <div class="campo"><label>Nome de usuário do master</label><input id="boot-user"></div>
+      <div class="campo"><label>Senha (mín. 6 caracteres)</label><input id="boot-senha" type="password"></div>
+      <div class="campo"><label>Repetir senha</label><input id="boot-senha2" type="password"></div>
+      <button class="btn ok full" id="btn-bootstrap">Criar conta master</button>
+      <div class="msg-erro" id="boot-erro"></div>
+      <div style="text-align:center;margin-top:8px"><button class="link-btn" id="link-voltar-login">Voltar ao login</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MIGRAÇÃO (contas do formato antigo) ============ -->
+<div id="tela-migracao" style="display:none;position:fixed;inset:0;align-items:center;justify-content:center;background:radial-gradient(ellipse at top,#16213c 0%,var(--bg) 60%)">
+  <div class="login-box" style="width:520px">
+    <h1>Atualização do sistema</h1>
+    <div class="sub">Este sistema agora suporta várias campanhas isoladas. Vamos transformar sua conta em <b>master</b> e mover seus dados atuais (lideranças, materiais, etc.) para a sua primeira campanha — nada é perdido.</div>
+    <div class="modal-acoes" style="justify-content:flex-start;margin-top:16px">
+      <button class="btn ok" id="btn-migrar">Migrar agora</button>
+      <button class="btn sec" onclick="auth.signOut()">Sair</button>
+    </div>
+    <div id="migracao-status" style="margin-top:16px;font-size:12.5px;color:var(--tx2);line-height:1.8"></div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app">
+  <button class="btn-menu-mobile" id="btn-menu-mobile" aria-label="Abrir menu">☰</button>
+  <div id="sidebar-backdrop"></div>
+  <aside id="sidebar">
+    <div class="logo"><b>BI Paraná</b><span id="logo-sub">PAINEL ELEITORAL</span></div>
+    <div id="badge-campanha" style="display:none;padding:10px 18px;border-bottom:1px solid var(--border);font-size:11.5px;color:var(--tx2)">
+      Campanha ativa<br><b id="badge-campanha-nome" style="color:var(--tx);font-size:12.5px">—</b>
+      <button class="btn sec mini" style="width:100%;margin-top:6px" onclick="sairDaCampanha()">← Trocar campanha</button>
+    </div>
+    <nav>
+      <button class="nav-item" data-pagina="campanhas" id="nav-campanhas" style="display:none"><span class="ico">🏢</span>Campanhas</button>
+      <button class="nav-item ativo" data-pagina="dashboard"><span class="ico">📊</span>Visão Geral</button>
+      <button class="nav-item" data-pagina="municipios"><span class="ico">🏛️</span>Municípios</button>
+      <button class="nav-item" data-pagina="liderancas"><span class="ico">🤝</span>Lideranças</button>
+      <button class="nav-item" data-pagina="votos"><span class="ico">🗳️</span>Expectativa de Votos</button>
+      <button class="nav-item" data-pagina="candidatos"><span class="ico">📍</span>Votação por Candidato</button>
+      <button class="nav-item" data-pagina="materiais"><span class="ico">📦</span>Materiais</button>
+      <button class="nav-item" data-pagina="agenda"><span class="ico">📅</span>Agenda</button>
+      <button class="nav-item" data-pagina="relatorios"><span class="ico">📄</span>Relatórios</button>
+      <button class="nav-item" data-pagina="config" id="nav-config"><span class="ico">⚙️</span>Configurações</button>
+    </nav>
+    <div id="user-box">
+      <div class="nome" id="user-nome">—</div>
+      <div class="papel" id="user-papel">—</div>
+      <button class="btn sec mini" id="btn-sair">Sair</button>
+    </div>
+  </aside>
+
+  <main id="main">
+
+    <!-- DASHBOARD -->
+    <section class="page ativa" id="page-dashboard">
+      <div class="page-header">
+        <div><h2 id="dash-titulo">Visão Geral</h2><div class="sub" id="dash-sub">Paraná — dados públicos IBGE e TSE cruzados com sua operação de campanha</div></div>
+      </div>
+
+      <!-- Home mobile: só aparece em telas pequenas -->
+      <div class="mobile-home">
+        <div class="mh-header">
+          <div>
+            <div class="mh-saudacao">Olá, <span id="mh-nome">—</span> 👋</div>
+            <div class="mh-papel" id="mh-papel">—</div>
+          </div>
+          <div class="mh-avatar" id="mh-avatar">?</div>
+        </div>
+        <div class="mh-kpis" id="mh-kpis"></div>
+        <div class="mh-secao-titulo">Módulos</div>
+        <div class="mh-modulos">
+          <button class="mh-modulo" data-pagina="municipios"><span class="mh-ico" style="background:#1d4ed822;color:#60a5fa">🏛️</span>Municípios</button>
+          <button class="mh-modulo" data-pagina="liderancas"><span class="mh-ico" style="background:#78350f22;color:#fbbf24">🤝</span>Lideranças</button>
+          <button class="mh-modulo" data-pagina="votos"><span class="mh-ico" style="background:#1e3a8a22;color:#93c5fd">🗳️</span>Expectativa</button>
+          <button class="mh-modulo" data-pagina="candidatos"><span class="mh-ico" style="background:#7f1d1d22;color:#fca5a5">📍</span>Candidatos</button>
+          <button class="mh-modulo" data-pagina="materiais"><span class="mh-ico" style="background:#78350f22;color:#fdba74">📦</span>Materiais</button>
+          <button class="mh-modulo" data-pagina="agenda"><span class="mh-ico" style="background:#4c1d9522;color:#c4b5fd">📅</span>Agenda</button>
+          <button class="mh-modulo" data-pagina="relatorios"><span class="mh-ico" style="background:#37415122;color:#cbd5e1">📄</span>Relatórios</button>
+          <button class="mh-modulo" data-pagina="config" id="mh-modulo-config"><span class="mh-ico" style="background:#14532d22;color:#86efac">⚙️</span>Configurações</button>
+        </div>
+        <div class="mh-secao-titulo">Atividade recente</div>
+        <div id="mh-atividade"></div>
+      </div>
+
+      <!-- Painéis completos: só aparecem no desktop -->
+      <div class="dash-desktop">
+        <div class="cards" id="dash-cards"></div>
+        <div class="painel">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+            <h3 style="margin:0">Mapa do Paraná</h3>
+            <select id="mapa-metrica" style="width:auto">
+              <option value="expectativa">Expectativa de votos</option>
+              <option value="cobertura">Cobertura de lideranças</option>
+              <option value="lid_prefeitos">Liderança — Prefeitos</option>
+              <option value="lid_vices">Liderança — Vice-prefeitos</option>
+              <option value="lid_vereadores">Liderança — Vereadores</option>
+              <option value="lid_cargo_eletivo">Liderança — qualquer cargo eletivo</option>
+              <option value="eleitorado">Eleitorado (TSE 2024)</option>
+              <option value="pop">População (IBGE 2024)</option>
+              <option value="pib">PIB per capita</option>
+              <option value="partido">Partido do prefeito</option>
+            </select>
+          </div>
+          <div id="mapa"></div>
+        </div>
+        <div class="grid-2">
+          <div class="painel"><h3>Top 12 municípios — expectativa de votos</h3><div class="chart-box"><canvas id="chart-top-exp"></canvas></div></div>
+          <div class="painel"><h3>Prefeitos eleitos em 2024 por partido</h3><div class="chart-box"><canvas id="chart-partidos"></canvas></div></div>
+        </div>
+        <div class="grid-2">
+          <div class="painel"><h3>Expectativa de votos por mesorregião</h3><div class="chart-box"><canvas id="chart-meso"></canvas></div></div>
+          <div class="painel"><h3>Cobertura da campanha</h3><div id="dash-cobertura"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CAMPANHAS (somente master) -->
+    <section class="page" id="page-campanhas">
+      <div class="page-header">
+        <div><h2>Campanhas</h2><div class="sub">Cada campanha é um candidato com dados totalmente isolados dos demais</div></div>
+        <div class="acoes"><button class="btn" id="btn-nova-campanha">+ Nova campanha</button></div>
+      </div>
+      <div class="cards" id="campanhas-cards"></div>
+      <div class="painel" style="overflow-x:auto"><div id="campanhas-tabela"></div></div>
+    </section>
+
+    <!-- MUNICÍPIOS -->
+    <section class="page" id="page-municipios">
+      <div class="page-header">
+        <div><h2>Municípios do Paraná</h2><div class="sub">399 municípios — População, PIB, economia, eleitorado e prefeitos (IBGE / TSE)</div></div>
+      </div>
+      <div class="toolbar">
+        <div class="campo grande"><label>Buscar município</label><input id="mun-busca" placeholder="Digite o nome..."></div>
+        <div class="campo"><label>Mesorregião</label><select id="mun-meso"><option value="">Todas</option></select></div>
+        <div class="campo"><label>Partido do prefeito (2024)</label><select id="mun-partido"><option value="">Todos</option></select></div>
+        <div class="campo"><label>Cobertura</label><select id="mun-cobertura"><option value="">Todas</option><option value="com">Com liderança</option><option value="sem">Sem liderança</option></select></div>
+      </div>
+      <div class="painel" style="overflow-x:auto"><div id="mun-tabela"></div></div>
+    </section>
+
+    <!-- LIDERANÇAS -->
+    <section class="page" id="page-liderancas">
+      <div class="page-header">
+        <div><h2>Lideranças</h2><div class="sub">Cadastro de lideranças por município e potencial de votos</div></div>
+        <div class="acoes"><button class="btn" id="btn-nova-lideranca">+ Nova liderança</button></div>
+      </div>
+      <div class="cards" id="lid-cards"></div>
+      <div class="toolbar">
+        <div class="campo grande"><label>Buscar</label><input id="lid-busca" placeholder="Nome, apelido ou município..."></div>
+        <div class="campo"><label>Município</label><select id="lid-municipio"><option value="">Todos</option></select></div>
+        <div class="campo"><label>Status</label><select id="lid-status"><option value="">Todos</option><option value="confirmada">Confirmada</option><option value="em_conversa">Em conversa</option><option value="indecisa">Indecisa</option><option value="perdida">Perdida</option></select></div>
+        <div class="campo"><label>Função</label><select id="lid-funcao"><option value="">Todas</option></select></div>
+      </div>
+      <div class="painel" style="overflow-x:auto"><div id="lid-tabela"></div></div>
+    </section>
+
+    <!-- EXPECTATIVA DE VOTOS -->
+    <section class="page" id="page-votos">
+      <div class="page-header">
+        <div><h2>Expectativa de Votos</h2><div class="sub" id="votos-sub">Projeção por município com base nas lideranças cadastradas</div></div>
+      </div>
+      <div class="cards" id="votos-cards"></div>
+      <div class="painel"><h3>Expectativa por mesorregião</h3><div class="chart-box baixo"><canvas id="chart-votos-meso"></canvas></div></div>
+      <div class="painel" id="painel-quociente">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+          <h3 style="margin:0">Referência histórica — quanto é preciso para eleger (TSE 2022)</h3>
+          <button class="btn sec mini" id="btn-carregar-quociente">Carregar comparação</button>
+        </div>
+        <div id="quociente-conteudo"><div class="vazio">Compara sua expectativa atual com a votação de quem se elegeu deputado(a) no Paraná em 2022. Clique em "Carregar comparação".</div></div>
+      </div>
+      <div class="toolbar">
+        <div class="campo grande"><label>Buscar município</label><input id="votos-busca" placeholder="Digite o nome..."></div>
+        <div class="campo"><label>Mesorregião</label><select id="votos-meso"><option value="">Todas</option></select></div>
+        <div class="campo"><label>Exibir</label><select id="votos-filtro"><option value="">Todos</option><option value="com">Somente com expectativa</option><option value="meta">Com meta definida</option></select></div>
+      </div>
+      <div class="painel" style="overflow-x:auto"><div id="votos-tabela"></div></div>
+    </section>
+
+    <!-- VOTAÇÃO POR CANDIDATO -->
+    <section class="page" id="page-candidatos">
+      <div class="page-header">
+        <div><h2>Votação por Candidato</h2><div class="sub">Onde cada candidato(a) a deputado teve votos em 2022 — dados oficiais do TSE por município</div></div>
+      </div>
+      <div class="toolbar">
+        <div class="campo">
+          <label>Cargo</label>
+          <select id="cand-cargo"><option value="est">Deputado Estadual</option><option value="fed">Deputado Federal</option></select>
+        </div>
+      </div>
+      <div class="abas">
+        <button class="aba ativa" data-modo="1">Ver 1 candidato</button>
+        <button class="aba" data-modo="2">Comparar 2 candidatos</button>
+        <button class="aba" data-modo="3">Chapas 2022</button>
+        <button class="aba" data-modo="4">Simulador de Chapa 2026</button>
+      </div>
+
+      <div id="cand-modo-unico">
+        <div class="toolbar">
+          <div class="campo grande"><label>Buscar candidato</label><input id="cand-busca" placeholder="Digite o nome ou nome de urna..."></div>
+          <div class="campo grande"><label>Candidato (ordenado por total de votos no PR)</label><select id="cand-select"></select></div>
+        </div>
+        <div class="cards" id="cand-cards"></div>
+        <div id="cand-indicacoes"></div>
+      </div>
+
+      <div id="cand-modo-comparar" style="display:none">
+        <div class="grid-2">
+          <div>
+            <div class="campo" style="margin-bottom:8px"><label>Buscar candidato A</label><input id="cand-busca-a" placeholder="Digite o nome ou nome de urna..."></div>
+            <div class="campo"><label>Candidato A</label><select id="cand-select-a"></select></div>
+          </div>
+          <div>
+            <div class="campo" style="margin-bottom:8px"><label>Buscar candidato B</label><input id="cand-busca-b" placeholder="Digite o nome ou nome de urna..."></div>
+            <div class="campo"><label>Candidato B</label><select id="cand-select-b"></select></div>
+          </div>
+        </div>
+        <div class="cards" id="cand-cards-comparar"></div>
+      </div>
+
+      <div id="cand-modo-chapas" style="display:none">
+        <div class="painel">
+          <div style="font-size:12.5px;color:var(--tx2);margin-bottom:4px" id="chapas-info"></div>
+        </div>
+        <div class="painel" style="overflow-x:auto"><div id="chapas-tabela"></div></div>
+      </div>
+
+      <div id="cand-modo-simulador" style="display:none">
+        <div class="painel">
+          <h3>Simular o desempenho de uma chapa em 2026</h3>
+          <div class="form-grid">
+            <div class="span2"><label>Chapa (partido ou federação, com base em 2022)</label><select id="sim-chapa"></select></div>
+          </div>
+
+          <div class="abas" style="margin-top:14px">
+            <button class="aba ativa" data-simmodo="simples">Estimativa simples</button>
+            <button class="aba" data-simmodo="completa">Chapa completa (candidato a candidato)</button>
+          </div>
+
+          <div id="sim-modo-simples">
+            <div class="form-grid">
+              <div><label>Seus votos esperados</label><input id="sim-votos-proprios" type="number" min="0"></div>
+              <div><label>Estimativa do restante da chapa (outros candidatos + legenda)</label><input id="sim-votos-resto" type="number" min="0"></div>
+            </div>
+            <div class="modal-acoes" style="justify-content:flex-start;margin-top:14px">
+              <button class="btn" id="btn-simular-chapa">Simular</button>
+            </div>
+          </div>
+
+          <div id="sim-modo-completa" style="display:none">
+            <label style="margin-bottom:8px">Candidatos da chapa e votos esperados de cada um</label>
+            <div id="sim-candidatos-lista"></div>
+            <button class="btn sec mini" id="btn-sim-add-candidato" type="button">+ Adicionar candidato</button>
+            <div class="campo" style="margin-top:14px;max-width:320px"><label>Votos de legenda estimados (opcional)</label><input id="sim-legenda" type="number" min="0" value="0"></div>
+            <div class="modal-acoes" style="justify-content:flex-start;margin-top:14px">
+              <button class="btn" id="btn-simular-chapa-completa">Simular chapa completa</button>
+              <button class="btn sec" id="btn-salvar-chapa-sim">💾 Salvar esta chapa</button>
+            </div>
+            <div style="font-size:11.5px;color:var(--tx3);margin-top:6px" id="sim-salvo-info"></div>
+          </div>
+
+          <div id="sim-resultado" style="margin-top:18px"></div>
+        </div>
+      </div>
+
+      <div class="painel" id="painel-mapa-cand">
+        <h3 id="cand-mapa-titulo">Mapa de votação</h3>
+        <div id="mapa-cand"></div>
+      </div>
+      <div class="painel" id="painel-tabela-cand" style="overflow-x:auto"><div id="cand-tabela-municipios"></div></div>
+    </section>
+
+    <!-- MATERIAIS -->
+    <section class="page" id="page-materiais">
+      <div class="page-header">
+        <div><h2>Materiais de Campanha</h2><div class="sub">Catálogo, estoque e controle de envios por liderança</div></div>
+        <div class="acoes">
+          <button class="btn sec" id="btn-novo-material">+ Material</button>
+          <button class="btn" id="btn-nova-remessa">+ Registrar envio</button>
+        </div>
+      </div>
+      <div class="cards" id="mat-cards"></div>
+      <div class="abas">
+        <button class="aba ativa" data-aba="remessas">Envios realizados</button>
+        <button class="aba" data-aba="catalogo">Catálogo e estoque</button>
+      </div>
+      <div id="aba-remessas">
+        <div class="toolbar">
+          <div class="campo grande"><label>Buscar</label><input id="rem-busca" placeholder="Material, liderança ou município..."></div>
+          <div class="campo"><label>Material</label><select id="rem-material"><option value="">Todos</option></select></div>
+          <div class="campo"><label>Município</label><select id="rem-municipio"><option value="">Todos</option></select></div>
+        </div>
+        <div class="painel" style="overflow-x:auto"><div id="rem-tabela"></div></div>
+      </div>
+      <div id="aba-catalogo" style="display:none">
+        <div class="painel" style="overflow-x:auto"><div id="cat-tabela"></div></div>
+      </div>
+    </section>
+
+    <!-- AGENDA -->
+    <section class="page" id="page-agenda">
+      <div class="page-header">
+        <div><h2>Agenda de Campanha</h2><div class="sub">Visitas, reuniões e eventos por município</div></div>
+        <div class="acoes"><button class="btn" id="btn-novo-evento">+ Novo compromisso</button></div>
+      </div>
+      <div class="painel" style="overflow-x:auto"><div id="agenda-tabela"></div></div>
+    </section>
+
+    <!-- RELATÓRIOS -->
+    <section class="page" id="page-relatorios">
+      <div class="page-header">
+        <div><h2>Relatórios</h2><div class="sub">Gere, imprima ou exporte em CSV</div></div>
+      </div>
+      <div class="toolbar no-print">
+        <div class="campo grande"><label>Relatório</label>
+          <select id="rel-tipo">
+            <option value="expectativa">Expectativa de votos por município</option>
+            <option value="meso">Expectativa por mesorregião</option>
+            <option value="liderancas">Lideranças (completo)</option>
+            <option value="materiais_lid">Materiais enviados por liderança</option>
+            <option value="materiais_mun">Materiais enviados por município</option>
+            <option value="sem_cobertura">Municípios sem cobertura (por eleitorado)</option>
+            <option value="lid_cargo_eletivo">Lideranças com cargo eletivo (prefeitos/vices/vereadores)</option>
+            <option value="ranking">Ranking socioeconômico dos municípios</option>
+            <option value="prefeitos">Prefeitos 2024 por partido</option>
+            <option value="vereadores">Vereadores eleitos 2024 por município</option>
+            <option value="dep_estadual">Deputados estaduais mais votados por município (2022)</option>
+            <option value="dep_federal">Deputados federais mais votados por município (2022)</option>
+            <option value="agro">Potencial agropecuário por município</option>
+          </select>
+        </div>
+        <div class="campo"><label>Mesorregião</label><select id="rel-meso"><option value="">Todas</option></select></div>
+        <div class="campo"><label>&nbsp;</label><button class="btn" id="btn-gerar-rel">Gerar</button></div>
+        <div class="campo"><label>&nbsp;</label><button class="btn sec" id="btn-rel-csv" disabled>Exportar CSV</button></div>
+        <div class="campo"><label>&nbsp;</label><button class="btn sec" id="btn-rel-print" disabled>Imprimir</button></div>
+      </div>
+      <div id="rel-cabecalho-print"></div>
+      <div class="painel" style="overflow-x:auto"><div id="rel-saida"><div class="vazio">Escolha um relatório e clique em Gerar.</div></div></div>
+    </section>
+
+    <!-- CONFIGURAÇÕES -->
+    <section class="page" id="page-config">
+      <div class="page-header"><div><h2>Configurações</h2><div class="sub">Candidato e usuários</div></div></div>
+      <div class="painel">
+        <h3>Dados do candidato</h3>
+        <div class="form-grid">
+          <div><label>Nome do candidato</label><input id="cfg-nome"></div>
+          <div><label>Partido</label><input id="cfg-partido"></div>
+          <div><label>Cargo em disputa</label><select id="cfg-cargo"><option value="Deputado Estadual">Deputado Estadual</option><option value="Deputado Federal">Deputado Federal</option></select></div>
+          <div><label>Meta total de votos</label><input id="cfg-meta" type="number" min="0"></div>
+        </div>
+        <div class="modal-acoes"><button class="btn" id="btn-cfg-salvar">Salvar</button></div>
+      </div>
+      <div class="painel" id="painel-usuarios">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h3 style="margin:0">Usuários do sistema</h3>
+          <button class="btn mini" id="btn-novo-usuario">+ Criar usuário</button>
+        </div>
+        <div id="usr-tabela"></div>
+      </div>
+      <div class="painel">
+        <h3>Sobre os dados públicos</h3>
+        <div style="font-size:12.5px;color:var(--tx2);line-height:1.8" id="sobre-dados"></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- MODAL -->
+<div id="modal-fundo"><div id="modal-caixa">
+  <button id="modal-fechar">✕</button>
+  <div id="modal-conteudo"></div>
+</div></div>
+
+<div id="toasts"></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="dados-pr.js?v=3"></script>
+<script src="js/app.js?v=8"></script>
+<script src="js/municipios.js?v=4"></script>
+<script src="js/eleitoral.js?v=3"></script>
+<script src="js/materiais.js?v=2"></script>
+<script src="js/relatorios.js?v=2"></script>
+<script src="js/candidatos.js?v=7"></script>
+<script src="js/config.js?v=3"></script>
+<script src="js/campanhas.js?v=2"></script>
+</body>
+</html>
