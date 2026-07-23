@@ -190,7 +190,7 @@ function abrirMunicipio(id) {
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px">
         ${m.indicacaoDeputadoEstadual.map(d => `<span class="tag ${d.partido ? "roxo" : "cinza"}" style="font-size:12px;padding:5px 12px">${esc(d.nome)}${d.partido ? " · " + esc(d.partido) : ""}${d.votos2022 ? " · " + fmtN(d.votos2022) + " votos em 2022" : ""}</span>`).join("")}
       </div>
-      <div style="font-size:11px;color:var(--tx3)">Fonte: indicação parcial de deputados estaduais — COAP/Casa Civil (27/02/2025). Pode não refletir alianças atuais.</div>`
+      <div style="font-size:11px;color:var(--tx3)">Fonte: Indicação parcial dos gabinetes das prefeituras</div>`
       : '<div style="color:var(--tx3);font-size:12.5px">Sem indicação registrada para este município.</div>'}
 
     <h3 style="font-size:13px;margin:16px 0 6px">🏛️ Vereadores eleitos em 2024 (${Array.isArray(m.vereadores2024) ? m.vereadores2024.length : 0})</h3>

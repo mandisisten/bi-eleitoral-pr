@@ -372,7 +372,7 @@
           </tr>`;
         }).join("")}
         </tbody></table>
-        <div style="font-size:11px;color:var(--tx3);margin-top:8px">Fonte: indicação parcial de deputados estaduais — COAP/Casa Civil (27/02/2025). Pode não refletir alianças atuais.</div>
+        <div style="font-size:11px;color:var(--tx3);margin-top:8px">Fonte: Indicação parcial dos gabinetes das prefeituras</div>
       </div>`;
   }
 
