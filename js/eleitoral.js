@@ -72,7 +72,10 @@ window.tagStatus = tagStatus;
           <td class="num">${fmtN(l.potencialVotos)}</td>
           <td class="num">${l.confianca != null ? l.confianca + "%" : "100%"}</td>
           <td class="num"><b>${fmtN(expectativaLideranca(l))}</b></td>
-          <td><button class="btn danger mini" onclick="event.stopPropagation();excluirLideranca('${l.id}','${esc(l.nome)}')">✕</button></td>
+          <td style="white-space:nowrap">
+            <button class="btn mini" title="${l.telefone ? "Enviar WhatsApp" : "Sem telefone cadastrado"}" ${l.telefone ? "" : "disabled"} onclick="event.stopPropagation();enviarWhatsAppLideranca('${l.id}')">💬</button>
+            <button class="btn danger mini" onclick="event.stopPropagation();excluirLideranca('${l.id}','${esc(l.nome)}')">✕</button>
+          </td>
         </tr>`;
       }).join("")}
       </tbody></table>` : '<div class="vazio">Nenhuma liderança encontrada. Clique em "+ Nova liderança" para começar.</div>';
@@ -151,6 +154,25 @@ async function salvarLideranca(id) {
   } catch (e) { toast("Erro ao salvar: " + e.message, "erro"); }
 }
 window.salvarLideranca = salvarLideranca;
+
+function enviarWhatsAppLideranca(id) {
+  const l = BI.liderancas.find(x => x.id === id);
+  if (!l) return;
+  if (!l.telefone) return toast("Essa liderança não tem telefone cadastrado.", "erro");
+  const primeiroNome = (l.apelido || l.nome || "").split(" ")[0];
+  const mensagemPadrao = `Olá, ${primeiroNome}! Aqui é da equipe de campanha de ${BI.config.nomeCandidato || "nossa campanha"}. Tudo bem?`;
+  Modal.abrir(`
+    <h3>Enviar WhatsApp — ${esc(l.nome)}</h3>
+    <p style="font-size:12.5px;color:var(--tx3);margin-top:-4px">${esc(l.telefone)}</p>
+    <div class="form-grid">
+      <div class="span2"><label>Mensagem</label><textarea id="f-wpp-msg" rows="4" oninput="document.getElementById('lnk-wpp').href = linkWhatsApp('${esc(l.telefone)}', this.value)">${esc(mensagemPadrao)}</textarea></div>
+    </div>
+    <div class="modal-acoes">
+      <button class="btn sec" onclick="Modal.fechar()">Cancelar</button>
+      <a id="lnk-wpp" class="btn" style="text-decoration:none" target="_blank" rel="noopener" href="${esc(linkWhatsApp(l.telefone, mensagemPadrao))}" onclick="Modal.fechar()">💬 Abrir WhatsApp</a>
+    </div>`);
+}
+window.enviarWhatsAppLideranca = enviarWhatsAppLideranca;
 
 function excluirLideranca(id, nome) {
   Modal.abrir(`<h3>Excluir liderança</h3>

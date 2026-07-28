@@ -55,6 +55,19 @@ const fmtMilR = n => n == null ? "—" : (n >= 1e6 ? "R$ " + (n/1e6).toFixed(2).
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
 window.fmtN = fmtN; window.fmtR = fmtR; window.fmtMilR = fmtMilR; window.esc = esc;
 
+function linkWhatsApp(telefone, mensagem) {
+  const digitos = String(telefone || "").replace(/\D/g, "");
+  if (digitos.length < 10) return null;
+  const comDDI = digitos.length <= 11 ? "55" + digitos : digitos;
+  return `https://wa.me/${comDDI}?text=${encodeURIComponent(mensagem || "")}`;
+}
+function abrirWhatsApp(telefone, mensagem) {
+  const link = linkWhatsApp(telefone, mensagem);
+  if (!link) return toast("Essa liderança não tem telefone cadastrado.", "erro");
+  window.open(link, "_blank", "noopener");
+}
+window.linkWhatsApp = linkWhatsApp; window.abrirWhatsApp = abrirWhatsApp;
+
 function toast(texto, tipo) {
   const el = document.createElement("div");
   el.className = "toast " + (tipo || "");
