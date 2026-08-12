@@ -382,23 +382,28 @@
     if (!cand) { cont.innerHTML = ""; return; }
     const municipiosIndicando = MUNI.filter(m =>
       Array.isArray(m.indicacaoDeputadoEstadual) && m.indicacaoDeputadoEstadual.some(d => d.numero === cand.numero)
-    ).sort((a, b) => (b.eleitorado2024 || 0) - (a.eleitorado2024 || 0));
+    ).map(m => ({ m, posicao: m.indicacaoDeputadoEstadual.findIndex(d => d.numero === cand.numero) + 1 }))
+     .sort((a, b) => (b.m.eleitorado2024 || 0) - (a.m.eleitorado2024 || 0));
 
     if (!municipiosIndicando.length) {
       cont.innerHTML = `<div class="painel"><div style="font-size:12.5px;color:var(--tx2)">Não consta como indicado por nenhum prefeito na lista de indicação parcial (COAP/Casa Civil, 27/02/2025).</div></div>`;
       return;
     }
+    const comoPrimeira = municipiosIndicando.filter(x => x.posicao === 1).length;
+    const comoSegunda = municipiosIndicando.filter(x => x.posicao === 2).length;
     cont.innerHTML = `
       <div class="painel">
-        <h3 style="margin-bottom:10px">🤝 Indicado por prefeitos em ${municipiosIndicando.length} município(s)</h3>
-        <table class="tab"><thead><tr><th>Município</th><th>Mesorregião</th><th class="num">Eleitorado</th><th>Prefeito 2024</th></tr></thead><tbody>
-        ${municipiosIndicando.map(m => {
+        <h3 style="margin-bottom:6px">🤝 Indicado por prefeitos em ${municipiosIndicando.length} município(s)</h3>
+        <div style="font-size:12px;color:var(--tx3);margin-bottom:10px">${comoPrimeira} como 1ª opção do prefeito, ${comoSegunda} como 2ª opção</div>
+        <table class="tab"><thead><tr><th>Município</th><th>Mesorregião</th><th class="num">Eleitorado</th><th>Prefeito 2024</th><th>Posição</th></tr></thead><tbody>
+        ${municipiosIndicando.map(({ m, posicao }) => {
           const p = m.prefeitos?.["2024"];
           return `<tr class="clicavel" onclick="abrirMunicipio(${m.id})">
             <td><b>${esc(m.nome)}</b></td>
             <td style="color:var(--tx2)">${esc(m.meso.replace(" Paranaense", ""))}</td>
             <td class="num">${fmtN(m.eleitorado2024)}</td>
             <td>${p ? esc(p.nomeUrna) + " (" + esc(p.partido) + ")" : "—"}</td>
+            <td><span class="tag ${posicao === 1 ? "verde" : "amarelo"}">${posicao}ª opção</span></td>
           </tr>`;
         }).join("")}
         </tbody></table>
