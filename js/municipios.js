@@ -189,6 +189,17 @@ function abrirMunicipio(id) {
       <div style="font-size:11px;color:var(--tx3);margin-top:-8px;margin-bottom:16px">Fonte: CNES/DATASUS — estabelecimentos ativos</div>`
       : '<div style="color:var(--tx3);font-size:12.5px;margin-bottom:16px">Sem dados de saúde para este município.</div>'}
 
+    <h3 style="font-size:13px;margin:16px 0 6px">💼 Emprego formal (Novo CAGED — jun/2026)</h3>
+    ${m.emprego ? `
+      <div class="det-grid" style="margin-bottom:14px">
+        <div class="det-item" style="${m.emprego.saldo >= 0 ? "border:1px solid var(--ok)" : "border:1px solid var(--err)"}"><div class="r">Saldo de vagas no mês</div><div class="v" style="color:${m.emprego.saldo >= 0 ? "var(--ok)" : "var(--err)"}">${m.emprego.saldo >= 0 ? "+" : ""}${fmtN(m.emprego.saldo)}</div></div>
+        <div class="det-item"><div class="r">Admissões</div><div class="v">${fmtN(m.emprego.admissoes)}</div></div>
+        <div class="det-item"><div class="r">Desligamentos</div><div class="v">${fmtN(m.emprego.desligamentos)}</div></div>
+        <div class="det-item"><div class="r">Salário médio na admissão</div><div class="v">${fmtR(m.emprego.salarioMedioAdmissao)}</div></div>
+      </div>
+      <div style="font-size:11px;color:var(--tx3);margin-top:-8px;margin-bottom:16px">Fonte: Novo CAGED/Ministério do Trabalho — movimentação de emprego formal no mês</div>`
+      : '<div style="color:var(--tx3);font-size:12.5px;margin-bottom:16px">Sem dados de emprego para este município.</div>'}
+
     <h3 style="font-size:13px;margin:16px 0 6px">🗳️ Deputados mais votados neste município — eleição 2022
       <span style="float:right">
         <button class="btn mini" id="btn-dep-est" onclick="trocarDeputados('est')">Estadual</button>
