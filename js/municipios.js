@@ -177,6 +177,18 @@ function abrirMunicipio(id) {
       </div>
     </div>
 
+    <h3 style="font-size:13px;margin:16px 0 6px">🏥 Saúde (CNES — jun/2026)</h3>
+    ${m.saude ? `
+      <div class="det-grid" style="margin-bottom:14px">
+        <div class="det-item"><div class="r">Estabelecimentos de saúde</div><div class="v">${fmtN(m.saude.estabelecimentos)}</div></div>
+        <div class="det-item"><div class="r">Unidades Básicas de Saúde</div><div class="v">${fmtN(m.saude.ubs)}</div></div>
+        <div class="det-item"><div class="r">Hospitais</div><div class="v">${fmtN(m.saude.hospitais)}</div></div>
+        <div class="det-item"><div class="r">Pronto-atendimento</div><div class="v">${fmtN(m.saude.prontoAtendimento)}</div></div>
+        <div class="det-item"><div class="r">Farmácias cadastradas</div><div class="v">${fmtN(m.saude.farmacias)}</div></div>
+      </div>
+      <div style="font-size:11px;color:var(--tx3);margin-top:-8px;margin-bottom:16px">Fonte: CNES/DATASUS — estabelecimentos ativos</div>`
+      : '<div style="color:var(--tx3);font-size:12.5px;margin-bottom:16px">Sem dados de saúde para este município.</div>'}
+
     <h3 style="font-size:13px;margin:16px 0 6px">🗳️ Deputados mais votados neste município — eleição 2022
       <span style="float:right">
         <button class="btn mini" id="btn-dep-est" onclick="trocarDeputados('est')">Estadual</button>
