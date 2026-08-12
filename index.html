@@ -255,6 +255,7 @@ table.tab tr.clicavel{cursor:pointer}
       <button class="nav-item" data-pagina="liderancas"><span class="ico">🤝</span>Lideranças</button>
       <button class="nav-item" data-pagina="votos"><span class="ico">🗳️</span>Expectativa de Votos</button>
       <button class="nav-item" data-pagina="candidatos"><span class="ico">📍</span>Votação por Candidato</button>
+      <button class="nav-item" data-pagina="radar"><span class="ico">🎯</span>Radar Municipal</button>
       <button class="nav-item" data-pagina="materiais"><span class="ico">📦</span>Materiais</button>
       <button class="nav-item" data-pagina="agenda"><span class="ico">📅</span>Agenda</button>
       <button class="nav-item" data-pagina="relatorios"><span class="ico">📄</span>Relatórios</button>
@@ -291,6 +292,7 @@ table.tab tr.clicavel{cursor:pointer}
           <button class="mh-modulo" data-pagina="liderancas"><span class="mh-ico" style="background:#78350f22;color:#fbbf24">🤝</span>Lideranças</button>
           <button class="mh-modulo" data-pagina="votos"><span class="mh-ico" style="background:#1e3a8a22;color:#93c5fd">🗳️</span>Expectativa</button>
           <button class="mh-modulo" data-pagina="candidatos"><span class="mh-ico" style="background:#7f1d1d22;color:#fca5a5">📍</span>Candidatos</button>
+          <button class="mh-modulo" data-pagina="radar"><span class="mh-ico" style="background:#7f1d1d22;color:#fca5a5">🎯</span>Radar</button>
           <button class="mh-modulo" data-pagina="materiais"><span class="mh-ico" style="background:#78350f22;color:#fdba74">📦</span>Materiais</button>
           <button class="mh-modulo" data-pagina="agenda"><span class="mh-ico" style="background:#4c1d9522;color:#c4b5fd">📅</span>Agenda</button>
           <button class="mh-modulo" data-pagina="relatorios"><span class="mh-ico" style="background:#37415122;color:#cbd5e1">📄</span>Relatórios</button>
@@ -488,6 +490,46 @@ table.tab tr.clicavel{cursor:pointer}
       <div class="painel" id="painel-tabela-cand" style="overflow-x:auto"><div id="cand-tabela-municipios"></div></div>
     </section>
 
+    <!-- RADAR MUNICIPAL -->
+    <section class="page" id="page-radar">
+      <div class="page-header">
+        <div><h2>Radar Municipal</h2><div class="sub">Lideranças, expectativa de votos e onde priorizar esforço de campanha, município a município</div></div>
+      </div>
+      <div class="cards" id="radar-cards"></div>
+
+      <div class="grid-2">
+        <div class="painel">
+          <h3>🎯 Maiores oportunidades</h3>
+          <div style="font-size:12px;color:var(--tx3);margin-bottom:10px">Municípios com muito eleitorado e pouca presença de campanha ainda — ordenados pelo índice de prioridade</div>
+          <div id="radar-prioridade"></div>
+        </div>
+        <div class="painel">
+          <h3>🏆 Top 15 — expectativa de votos</h3>
+          <div class="chart-box baixo"><canvas id="chart-radar-top"></canvas></div>
+        </div>
+      </div>
+
+      <div class="painel">
+        <h3>Cobertura de lideranças por mesorregião</h3>
+        <div class="chart-box baixo"><canvas id="chart-radar-cobertura"></canvas></div>
+      </div>
+
+      <div class="toolbar">
+        <div class="campo grande"><label>Buscar município</label><input id="radar-busca" placeholder="Digite o nome..."></div>
+        <div class="campo"><label>Mesorregião</label><select id="radar-meso"><option value="">Todas</option></select></div>
+        <div class="campo"><label>Status</label><select id="radar-status"><option value="">Todos</option><option value="forte">Forte</option><option value="parcial">Parcial</option><option value="vazio">Sem cobertura</option></select></div>
+        <div class="campo"><label>Ordenar por</label>
+          <select id="radar-ordenar">
+            <option value="prioridade">Índice de prioridade</option>
+            <option value="expectativa">Expectativa de votos</option>
+            <option value="eleitorado">Eleitorado</option>
+            <option value="liderancas">Nº de lideranças</option>
+          </select>
+        </div>
+      </div>
+      <div class="painel" style="overflow-x:auto"><div id="radar-tabela"></div></div>
+    </section>
+
     <!-- MATERIAIS -->
     <section class="page" id="page-materiais">
       <div class="page-header">
@@ -602,6 +644,7 @@ table.tab tr.clicavel{cursor:pointer}
 <script src="js/app.js?v=11"></script>
 <script src="js/municipios.js?v=8"></script>
 <script src="js/eleitoral.js?v=5"></script>
+<script src="js/radar.js?v=1"></script>
 <script src="js/materiais.js?v=2"></script>
 <script src="js/relatorios.js?v=2"></script>
 <script src="js/candidatos.js?v=12"></script>
