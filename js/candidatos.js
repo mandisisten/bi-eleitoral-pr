@@ -243,7 +243,7 @@
     const sel = $("#sim-chapa");
     if (!dados) { sel.innerHTML = ""; return; }
     const valorAntigo = sel.value;
-    sel.innerHTML = dados.lista.map(c => `<option value="${esc(c.chave)}">${esc(c.nome)} — ${fmtN(c.total)} votos (${c.vagasTotal} vaga${c.vagasTotal === 1 ? "" : "s"} na projeção)</option>`).join("");
+    sel.innerHTML = dados.lista.map(c => `<option value="${esc(c.chave)}">${esc(c.nome)} — ${fmtN(c.total)} votos em 2022 · ${c.vagasTotal} vaga${c.vagasTotal === 1 ? "" : "s"} em 2022</option>`).join("");
     if (dados.lista.some(c => c.chave === valorAntigo)) sel.value = valorAntigo;
     if (!$("#sim-votos-proprios").value) {
       const exp = Object.values(expectativaPorMunicipio()).reduce((a, b) => a + b, 0);
@@ -296,10 +296,10 @@
 
     $("#sim-resultado").innerHTML = `
       <div class="det-grid" style="margin-bottom:14px">
-        <div class="det-item"><div class="r">Total simulado da chapa</div><div class="v">${fmtN(novoTotal)}</div></div>
-        <div class="det-item"><div class="r">Total base (projeção 2022)</div><div class="v">${fmtN(chapaReal.total)}</div></div>
-        <div class="det-item" style="border:1px solid var(--pri)"><div class="r">Vagas estimadas</div><div class="v" style="color:var(--pri2)">${chapaSimulada.vagasTotal}</div></div>
-        <div class="det-item"><div class="r">Vagas na projeção</div><div class="v">${chapaReal.vagasTotal} ${delta !== 0 ? `<span style="font-size:13px;color:${delta > 0 ? "var(--ok)" : "var(--err)"}">(${delta > 0 ? "+" : ""}${delta})</span>` : ""}</div></div>
+        <div class="det-item" style="border:1px solid var(--pri)"><div class="r">Total projetado para 2026</div><div class="v" style="color:var(--pri2)">${fmtN(novoTotal)}</div></div>
+        <div class="det-item"><div class="r">Votos reais em 2022</div><div class="v">${fmtN(chapaReal.total)}</div></div>
+        <div class="det-item" style="border:1px solid var(--pri)"><div class="r">Vagas estimadas em 2026</div><div class="v" style="color:var(--pri2)">${chapaSimulada.vagasTotal}</div></div>
+        <div class="det-item"><div class="r">Vagas reais em 2022</div><div class="v">${chapaReal.vagasTotal} ${delta !== 0 ? `<span style="font-size:13px;color:${delta > 0 ? "var(--ok)" : "var(--err)"}">(${delta > 0 ? "+" : ""}${delta})</span>` : ""}</div></div>
       </div>
       <div style="font-size:13px;color:var(--tx2);line-height:1.6">${posicaoTexto}</div>
       <div style="font-size:11.5px;color:var(--tx3);margin-top:10px">Chapa baseada na composição real de partidos/federações registrada no TSE para 2026 (ex.: União+PP já somados como Federação União Progressista). O total de cada chapa usa os votos de 2022 dos partidos que a compõem hoje como referência, e demais chapas ficam fixas nesses mesmos valores — é uma aproximação para orientar estratégia, não uma previsão exata do resultado de 2026.</div>`;
@@ -343,10 +343,10 @@
 
     $("#sim-resultado").innerHTML = `
       <div class="det-grid" style="margin-bottom:14px">
-        <div class="det-item"><div class="r">Total simulado da chapa</div><div class="v">${fmtN(novoTotal)}</div></div>
-        <div class="det-item"><div class="r">Total base (projeção 2022)</div><div class="v">${fmtN(chapaReal.total)}</div></div>
-        <div class="det-item" style="border:1px solid var(--pri)"><div class="r">Vagas estimadas</div><div class="v" style="color:var(--pri2)">${vagas}</div></div>
-        <div class="det-item"><div class="r">Vagas na projeção</div><div class="v">${chapaReal.vagasTotal} ${delta !== 0 ? `<span style="font-size:13px;color:${delta > 0 ? "var(--ok)" : "var(--err)"}">(${delta > 0 ? "+" : ""}${delta})</span>` : ""}</div></div>
+        <div class="det-item" style="border:1px solid var(--pri)"><div class="r">Total projetado para 2026</div><div class="v" style="color:var(--pri2)">${fmtN(novoTotal)}</div></div>
+        <div class="det-item"><div class="r">Votos reais em 2022</div><div class="v">${fmtN(chapaReal.total)}</div></div>
+        <div class="det-item" style="border:1px solid var(--pri)"><div class="r">Vagas estimadas em 2026</div><div class="v" style="color:var(--pri2)">${vagas}</div></div>
+        <div class="det-item"><div class="r">Vagas reais em 2022</div><div class="v">${chapaReal.vagasTotal} ${delta !== 0 ? `<span style="font-size:13px;color:${delta > 0 ? "var(--ok)" : "var(--err)"}">(${delta > 0 ? "+" : ""}${delta})</span>` : ""}</div></div>
       </div>
       <table class="tab"><thead><tr><th>#</th><th>Candidato</th><th class="num">Votos esperados</th><th>Resultado</th></tr></thead><tbody>
       ${ordenados.map((c, i) => `<tr>
