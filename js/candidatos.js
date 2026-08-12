@@ -63,7 +63,8 @@
     if (!roster || !chapaReal) return [];
     const vistos = new Set();
     const lista = [];
-    chapaReal.partidos.forEach(sigla => {
+    const siglas = chapaReal.partidos2026 || chapaReal.partidos;
+    siglas.forEach(sigla => {
       (roster[sigla] || []).forEach(c => {
         if (vistos.has(c.numero)) return;
         vistos.add(c.numero);
@@ -77,7 +78,7 @@
     const cargo = $("#cand-cargo").value;
     const chave = $("#sim-chapa").value;
     if (!chave) return;
-    const dados = chapasAtual();
+    const dados = chapas2026Atual();
     const chapaReal = dados && dados.lista.find(c => c.chave === chave);
     const salvo = BI.chapaSim[idChapaSim(cargo, chave)];
     $("#sim-candidatos-lista").innerHTML = "";
@@ -194,6 +195,11 @@
     return (window.VOTOS_DEPUTADOS && window.VOTOS_DEPUTADOS.chapas && window.VOTOS_DEPUTADOS.chapas[cargo]) || null;
   }
 
+  function chapas2026Atual() {
+    const cargo = $("#cand-cargo").value;
+    return (window.VOTOS_DEPUTADOS && window.VOTOS_DEPUTADOS.chapas2026 && window.VOTOS_DEPUTADOS.chapas2026[cargo]) || chapasAtual();
+  }
+
   function eleitosDaChapa(cargo, chapa) {
     const lista = (window.VOTOS_DEPUTADOS && window.VOTOS_DEPUTADOS[cargo]) || [];
     return lista.filter(c => chapa.partidos.includes(c.partido) && /^ELEITO/.test(c.situacao)).sort((a, b) => b.total - a.total);
@@ -233,11 +239,11 @@
   window.verEleitosChapa = verEleitosChapa;
 
   function popularSelectChapas() {
-    const dados = chapasAtual();
+    const dados = chapas2026Atual();
     const sel = $("#sim-chapa");
     if (!dados) { sel.innerHTML = ""; return; }
     const valorAntigo = sel.value;
-    sel.innerHTML = dados.lista.map(c => `<option value="${esc(c.chave)}">${esc(c.nome)} — ${fmtN(c.total)} votos (${c.vagasTotal} vaga${c.vagasTotal === 1 ? "" : "s"} em 2022)</option>`).join("");
+    sel.innerHTML = dados.lista.map(c => `<option value="${esc(c.chave)}">${esc(c.nome)} — ${fmtN(c.total)} votos (${c.vagasTotal} vaga${c.vagasTotal === 1 ? "" : "s"} na projeção)</option>`).join("");
     if (dados.lista.some(c => c.chave === valorAntigo)) sel.value = valorAntigo;
     if (!$("#sim-votos-proprios").value) {
       const exp = Object.values(expectativaPorMunicipio()).reduce((a, b) => a + b, 0);
@@ -261,7 +267,7 @@
 
   function simularChapa() {
     const cargo = $("#cand-cargo").value;
-    const dados = chapasAtual();
+    const dados = chapas2026Atual();
     const chave = $("#sim-chapa").value;
     const chapaReal = dados.lista.find(c => c.chave === chave);
     if (!chapaReal) return;
@@ -291,12 +297,12 @@
     $("#sim-resultado").innerHTML = `
       <div class="det-grid" style="margin-bottom:14px">
         <div class="det-item"><div class="r">Total simulado da chapa</div><div class="v">${fmtN(novoTotal)}</div></div>
-        <div class="det-item"><div class="r">Total da chapa em 2022</div><div class="v">${fmtN(chapaReal.total)}</div></div>
+        <div class="det-item"><div class="r">Total base (projeção 2022)</div><div class="v">${fmtN(chapaReal.total)}</div></div>
         <div class="det-item" style="border:1px solid var(--pri)"><div class="r">Vagas estimadas</div><div class="v" style="color:var(--pri2)">${chapaSimulada.vagasTotal}</div></div>
-        <div class="det-item"><div class="r">Vagas em 2022</div><div class="v">${chapaReal.vagasTotal} ${delta !== 0 ? `<span style="font-size:13px;color:${delta > 0 ? "var(--ok)" : "var(--err)"}">(${delta > 0 ? "+" : ""}${delta})</span>` : ""}</div></div>
+        <div class="det-item"><div class="r">Vagas na projeção</div><div class="v">${chapaReal.vagasTotal} ${delta !== 0 ? `<span style="font-size:13px;color:${delta > 0 ? "var(--ok)" : "var(--err)"}">(${delta > 0 ? "+" : ""}${delta})</span>` : ""}</div></div>
       </div>
       <div style="font-size:13px;color:var(--tx2);line-height:1.6">${posicaoTexto}</div>
-      <div style="font-size:11.5px;color:var(--tx3);margin-top:10px">Simulação mantém as demais chapas nos valores reais de 2022 e usa o quociente eleitoral (QE) de 2022 como referência — é uma aproximação para orientar estratégia, não uma previsão exata do resultado de 2026.</div>`;
+      <div style="font-size:11.5px;color:var(--tx3);margin-top:10px">Chapa baseada na composição real de partidos/federações registrada no TSE para 2026 (ex.: União+PP já somados como Federação União Progressista). O total de cada chapa usa os votos de 2022 dos partidos que a compõem hoje como referência, e demais chapas ficam fixas nesses mesmos valores — é uma aproximação para orientar estratégia, não uma previsão exata do resultado de 2026.</div>`;
   }
 
   /* ---------- Simulador: chapa completa (candidato a candidato) ---------- */
@@ -314,7 +320,7 @@
 
   function simularChapaCompleta() {
     const cargo = $("#cand-cargo").value;
-    const dados = chapasAtual();
+    const dados = chapas2026Atual();
     const chave = $("#sim-chapa").value;
     const chapaReal = dados.lista.find(c => c.chave === chave);
     if (!chapaReal) return;
@@ -338,9 +344,9 @@
     $("#sim-resultado").innerHTML = `
       <div class="det-grid" style="margin-bottom:14px">
         <div class="det-item"><div class="r">Total simulado da chapa</div><div class="v">${fmtN(novoTotal)}</div></div>
-        <div class="det-item"><div class="r">Total da chapa em 2022</div><div class="v">${fmtN(chapaReal.total)}</div></div>
+        <div class="det-item"><div class="r">Total base (projeção 2022)</div><div class="v">${fmtN(chapaReal.total)}</div></div>
         <div class="det-item" style="border:1px solid var(--pri)"><div class="r">Vagas estimadas</div><div class="v" style="color:var(--pri2)">${vagas}</div></div>
-        <div class="det-item"><div class="r">Vagas em 2022</div><div class="v">${chapaReal.vagasTotal} ${delta !== 0 ? `<span style="font-size:13px;color:${delta > 0 ? "var(--ok)" : "var(--err)"}">(${delta > 0 ? "+" : ""}${delta})</span>` : ""}</div></div>
+        <div class="det-item"><div class="r">Vagas na projeção</div><div class="v">${chapaReal.vagasTotal} ${delta !== 0 ? `<span style="font-size:13px;color:${delta > 0 ? "var(--ok)" : "var(--err)"}">(${delta > 0 ? "+" : ""}${delta})</span>` : ""}</div></div>
       </div>
       <table class="tab"><thead><tr><th>#</th><th>Candidato</th><th class="num">Votos esperados</th><th>Resultado</th></tr></thead><tbody>
       ${ordenados.map((c, i) => `<tr>
@@ -351,7 +357,7 @@
       </tr>`).join("")}
       </tbody></table>
       ${legenda ? `<div style="font-size:12px;color:var(--tx2);margin-top:10px">+ ${fmtN(legenda)} votos de legenda estimados incluídos no total da chapa.</div>` : ""}
-      <div style="font-size:11.5px;color:var(--tx3);margin-top:10px">A ordem de eleição dentro da chapa segue os mais votados entre os candidatos informados (lista aberta, como na eleição real). Simulação mantém as demais chapas nos valores reais de 2022 e usa o quociente eleitoral (QE) de 2022 como referência.</div>`;
+      <div style="font-size:11.5px;color:var(--tx3);margin-top:10px">Chapa baseada na composição real de partidos/federações registrada no TSE para 2026. A ordem de eleição dentro da chapa segue os mais votados entre os candidatos informados (lista aberta, como na eleição real). Demais chapas ficam fixas nos valores de 2022 dos partidos que as compõem hoje, e a simulação usa o quociente eleitoral (QE) de 2022 como referência.</div>`;
   }
 
   /* ---------- Modo: 1 candidato ---------- */

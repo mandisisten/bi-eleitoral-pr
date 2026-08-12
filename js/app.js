@@ -128,7 +128,7 @@ function carregarVotosDeputados() {
   if (_carregandoVotosDeputados) return _carregandoVotosDeputados;
   _carregandoVotosDeputados = new Promise((resolve, reject) => {
     const s = document.createElement("script");
-    s.src = "votos-deputados.js?v=3";
+    s.src = "votos-deputados.js?v=4";
     s.onload = resolve;
     s.onerror = () => reject(new Error("Não foi possível carregar os dados de votação."));
     document.head.appendChild(s);
