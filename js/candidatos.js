@@ -58,10 +58,27 @@
 
   function idChapaSim(cargo, chave) { return (cargo + "__" + chave).replace(/[^a-zA-Z0-9]+/g, "_"); }
 
+  function candidatosReaisChapa(cargo, chapaReal) {
+    const roster = window.VOTOS_DEPUTADOS && window.VOTOS_DEPUTADOS.roster2026 && window.VOTOS_DEPUTADOS.roster2026[cargo];
+    if (!roster || !chapaReal) return [];
+    const vistos = new Set();
+    const lista = [];
+    chapaReal.partidos.forEach(sigla => {
+      (roster[sigla] || []).forEach(c => {
+        if (vistos.has(c.numero)) return;
+        vistos.add(c.numero);
+        lista.push(c);
+      });
+    });
+    return lista.sort((a, b) => a.nomeUrna.localeCompare(b.nomeUrna, "pt-BR"));
+  }
+
   function carregarRosterChapa() {
     const cargo = $("#cand-cargo").value;
     const chave = $("#sim-chapa").value;
     if (!chave) return;
+    const dados = chapasAtual();
+    const chapaReal = dados && dados.lista.find(c => c.chave === chave);
     const salvo = BI.chapaSim[idChapaSim(cargo, chave)];
     $("#sim-candidatos-lista").innerHTML = "";
     $("#sim-candidatos-lista").dataset.carregado = "1";
@@ -69,12 +86,19 @@
       salvo.candidatos.forEach(c => addLinhaCandidatoSim(c.nome, c.votos));
       $("#sim-legenda").value = salvo.legenda || 0;
       $("#sim-salvo-info").textContent = `Chapa salva anteriormente por ${salvo.atualizadoPor || "alguém"}.`;
+      return;
+    }
+    const reais = candidatosReaisChapa(cargo, chapaReal);
+    if (reais.length) {
+      reais.forEach(c => addLinhaCandidatoSim(`${c.nomeUrna} (nº ${c.numero})`, ""));
+      $("#sim-legenda").value = 0;
+      $("#sim-salvo-info").textContent = `${reais.length} candidato(s) registrado(s) no TSE para 2026 — preencha a expectativa de votos de cada um e clique em "Salvar esta chapa".`;
     } else {
       const exp = Object.values(expectativaPorMunicipio()).reduce((a, b) => a + b, 0);
       addLinhaCandidatoSim("Você (candidato principal)", exp || "");
       addLinhaCandidatoSim("", "");
       $("#sim-legenda").value = 0;
-      $("#sim-salvo-info").textContent = "Ainda não salva — clique em \"Salvar esta chapa\" para guardar este cenário.";
+      $("#sim-salvo-info").textContent = "Sem candidatura registrada no TSE para esta chapa ainda — adicione manualmente. Clique em \"Salvar esta chapa\" para guardar este cenário.";
     }
   }
 
