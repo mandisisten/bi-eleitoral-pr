@@ -61,7 +61,7 @@
 
     $("#mun-tabela").innerHTML = `
       <div style="font-size:12px;color:var(--tx3);margin-bottom:8px">${lista.length} município(s)</div>
-      <table class="tab"><thead><tr>
+      <table class="tab table-municipios"><thead><tr>
         ${th("Município", "nome")}${th("Mesorregião", "meso")}
         ${th("População", "pop2024", 1)}${th("Eleitorado", "eleitorado2024", 1)}
         ${th("PIB per capita", "pibPerCapita", 1)}
