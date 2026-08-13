@@ -165,8 +165,20 @@ table.tab tr.clicavel{cursor:pointer}
   .page-header .acoes .btn{width:100%}
   #modal-fundo{padding:16px 8px}
   #modal-caixa,#modal-caixa.largo{width:100%;padding:20px 16px}
-  table.tab{font-size:12px}
-  table.tab th,table.tab td{padding:7px 6px}
+
+  /* tabelas viram cartões empilhados no celular (em vez de scroll horizontal) */
+  table.tab{font-size:13px}
+  table.tab thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+  table.tab, table.tab tbody{display:block;width:100%}
+  table.tab tr{display:block;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:2px 14px;margin-bottom:10px}
+  table.tab tbody tr:hover{background:var(--card)}
+  table.tab td{display:flex;align-items:center;justify-content:space-between;gap:14px;text-align:right;padding:9px 0;border-bottom:1px solid #1e2740}
+  table.tab td:last-child{border-bottom:none}
+  table.tab td::before{content:attr(data-label);color:var(--tx3);font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;font-weight:700;text-align:left;flex-shrink:0}
+  table.tab td:empty::before{content:none}
+  table.tab td:not([data-label])::before{content:none}
+  .painel[style*="overflow-x"]{overflow-x:visible!important}
+
   .cards{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:9px}
   .det-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
   .toolbar .campo,.toolbar .campo.grande{min-width:0;flex:1 1 100%}
@@ -672,7 +684,7 @@ table.tab tr.clicavel{cursor:pointer}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="dados-pr.js?v=5"></script>
-<script src="js/app.js?v=11"></script>
+<script src="js/app.js?v=14"></script>
 <script src="js/municipios.js?v=8"></script>
 <script src="js/eleitoral.js?v=5"></script>
 <script src="js/radar.js?v=3"></script>

@@ -487,6 +487,27 @@ $("#btn-menu-mobile").onclick = abrirMenuMobile;
 $("#sidebar-backdrop").onclick = fecharMenuMobile;
 $$(".mh-modulo").forEach(b => b.onclick = () => mostrarPagina(b.dataset.pagina));
 
+/* ---------- Tabelas -> cartões no celular ----------
+   Em telas estreitas, table.tab vira uma lista de cartões (CSS faz a virada,
+   aqui só rotulamos cada <td> com data-label = texto do <th> da coluna,
+   pra não precisar mexer em cada função que monta tabela pelo app). */
+function rotularTabelasMobile(raiz) {
+  (raiz || document).querySelectorAll("table.tab").forEach(tabela => {
+    const ths = [...tabela.querySelectorAll("thead th")];
+    if (!ths.length) return;
+    const rotulos = ths.map(th => th.textContent.replace(/\s*[▲▼]\s*$/, "").trim());
+    tabela.querySelectorAll("tbody tr").forEach(tr => {
+      [...tr.children].forEach((td, i) => { if (rotulos[i]) td.dataset.label = rotulos[i]; });
+    });
+  });
+}
+let _rotularTid = null;
+new MutationObserver(() => {
+  clearTimeout(_rotularTid);
+  _rotularTid = setTimeout(() => rotularTabelasMobile(document), 30);
+}).observe(document.body, { childList: true, subtree: true });
+rotularTabelasMobile();
+
 function aoMudarDados() {
   if (PAGES[BI.paginaAtual] && PAGES[BI.paginaAtual].render) PAGES[BI.paginaAtual].render();
 }
