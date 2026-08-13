@@ -233,7 +233,7 @@ function abrirMunicipio(id) {
 
     <h3 style="font-size:13px;margin:16px 0 6px">🤝 Lideranças (${lids.length})
       <button class="btn mini" style="float:right" onclick="Modal.fechar();novaLideranca(${m.id})">+ Adicionar</button></h3>
-    ${lids.length ? `<table class="tab"><thead><tr><th>Nome</th><th>Função</th><th>Status</th><th class="num">Potencial</th><th class="num">Expectativa</th></tr></thead><tbody>
+    ${lids.length ? `<table class="tab table-liderancas"><thead><tr><th>Nome</th><th>Função</th><th>Status</th><th class="num">Potencial</th><th class="num">Expectativa</th></tr></thead><tbody>
       ${lids.map(l => `<tr class="clicavel" onclick="Modal.fechar();editarLideranca('${l.id}')"><td><b>${esc(l.nome)}</b>${l.apelido ? ` <span style="color:var(--tx3)">(${esc(l.apelido)})</span>` : ""}</td>
         <td style="color:var(--tx2)">${esc(l.funcao || "—")}</td><td>${statusTag(l.status)}</td>
         <td class="num">${fmtN(l.potencialVotos)}</td><td class="num"><b>${fmtN(expectativaLideranca(l))}</b></td></tr>`).join("")}

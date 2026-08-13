@@ -223,6 +223,19 @@ table.tab tr.clicavel{cursor:pointer}
   table.tab.table-municipios td:nth-child(9)::before{text-align:right}
   table.tab.table-municipios td:nth-child(9) b{color:var(--pri2);font-size:14px}
 
+  /* lideranças (na ficha do município): nome/função/status numa coluna, potencial/expectativa na outra */
+  table.tab.table-liderancas tbody tr{display:grid;grid-template-columns:1fr auto;column-gap:14px;row-gap:6px;align-items:start;padding:12px 14px}
+  table.tab.table-liderancas td{border:none;padding:0;display:block}
+  table.tab.table-liderancas td::before{content:attr(data-label);display:block;color:var(--tx3);font-size:9.5px;text-transform:uppercase;letter-spacing:.3px;font-weight:700;margin-bottom:3px}
+  table.tab.table-liderancas td:nth-child(1){grid-column:1;grid-row:1}
+  table.tab.table-liderancas td:nth-child(2){grid-column:1;grid-row:2;font-size:12.5px}
+  table.tab.table-liderancas td:nth-child(3){grid-column:1;grid-row:3}
+  table.tab.table-liderancas td:nth-child(4){grid-column:2;grid-row:1;text-align:right;justify-self:end}
+  table.tab.table-liderancas td:nth-child(4)::before{text-align:right}
+  table.tab.table-liderancas td:nth-child(5){grid-column:2;grid-row:2;text-align:right;justify-self:end}
+  table.tab.table-liderancas td:nth-child(5)::before{text-align:right}
+  table.tab.table-liderancas td:nth-child(5) b{color:var(--pri2);font-size:14px}
+
   .cards{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:9px}
   .det-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
   .toolbar .campo,.toolbar .campo.grande{min-width:0;flex:1 1 100%}
@@ -729,7 +742,7 @@ table.tab tr.clicavel{cursor:pointer}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="dados-pr.js?v=5"></script>
 <script src="js/app.js?v=14"></script>
-<script src="js/municipios.js?v=12"></script>
+<script src="js/municipios.js?v=13"></script>
 <script src="js/eleitoral.js?v=5"></script>
 <script src="js/radar.js?v=3"></script>
 <script src="js/materiais.js?v=2"></script>
