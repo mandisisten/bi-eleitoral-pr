@@ -104,7 +104,7 @@ table.tab tr.clicavel{cursor:pointer}
 .mapa-legenda i{display:inline-block;width:14px;height:11px;margin-right:5px;border-radius:2px;vertical-align:-1px}
 
 /* modal */
-#modal-fundo{position:fixed;inset:0;background:#000a;backdrop-filter:blur(3px);z-index:80;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:40px 16px}
+#modal-fundo{position:fixed;inset:0;background:#000a;backdrop-filter:blur(3px);z-index:2000;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:40px 16px}
 #modal-fundo.aberto{display:flex}
 #modal-caixa{background:var(--card);border:1px solid var(--border);border-radius:14px;width:640px;max-width:100%;padding:24px;position:relative}
 #modal-caixa.largo{width:1000px}
@@ -117,7 +117,7 @@ table.tab tr.clicavel{cursor:pointer}
 .modal-acoes{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
 
 /* toast */
-#toasts{position:fixed;bottom:20px;right:20px;z-index:120;display:flex;flex-direction:column;gap:8px}
+#toasts{position:fixed;bottom:20px;right:20px;z-index:2100;display:flex;flex-direction:column;gap:8px}
 .toast{background:var(--card2);border:1px solid var(--border);border-left:4px solid var(--pri);padding:11px 16px;border-radius:8px;font-size:13px;min-width:230px;box-shadow:0 8px 24px #0008;animation:subir .25s}
 .toast.ok{border-left-color:var(--ok)} .toast.erro{border-left-color:var(--err)}
 @keyframes subir{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
