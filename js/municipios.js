@@ -201,7 +201,10 @@ function abrirMunicipio(id) {
       : '<div style="color:var(--tx3);font-size:12.5px;margin-bottom:16px">Sem dados de emprego para este município.</div>'}
 
     <details class="secao-colapsavel">
-      <summary>🗳️ Deputados mais votados neste município — eleição 2022</summary>
+      <summary>
+        <span>🗳️ Deputados mais votados neste município — eleição 2022</span>
+        <span class="toggle-txt"><span class="toggle-fechado">Ver lista</span><span class="toggle-aberto">Ocultar</span> <span class="seta">▾</span></span>
+      </summary>
       <div class="secao-corpo">
         <div style="text-align:right;margin-bottom:8px">
           <button class="btn mini" id="btn-dep-est" onclick="trocarDeputados('est')">Estadual</button>
@@ -221,7 +224,10 @@ function abrirMunicipio(id) {
       : '<div style="color:var(--tx3);font-size:12.5px">Sem indicação registrada para este município.</div>'}
 
     <details class="secao-colapsavel">
-      <summary>🏛️ Vereadores eleitos em 2024 (${Array.isArray(m.vereadores2024) ? m.vereadores2024.length : 0})</summary>
+      <summary>
+        <span>🏛️ Vereadores eleitos em 2024 (${Array.isArray(m.vereadores2024) ? m.vereadores2024.length : 0})</span>
+        <span class="toggle-txt"><span class="toggle-fechado">Ver lista</span><span class="toggle-aberto">Ocultar</span> <span class="seta">▾</span></span>
+      </summary>
       <div class="secao-corpo">${tabelaCandidatos(m.vereadores2024)}</div>
     </details>
 

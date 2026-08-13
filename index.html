@@ -129,10 +129,16 @@ table.tab tr.clicavel{cursor:pointer}
 
 /* seção retrátil (deputados/vereadores na ficha do município) */
 .secao-colapsavel{margin:16px 0}
-.secao-colapsavel summary{font-size:13px;font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:7px;color:var(--tx)}
+.secao-colapsavel summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;font-size:13px;font-weight:700;color:var(--tx);transition:border-color .15s}
+.secao-colapsavel summary:hover{border-color:var(--pri)}
 .secao-colapsavel summary::-webkit-details-marker{display:none}
-.secao-colapsavel summary::before{content:"▸";color:var(--tx3);font-size:11px;transition:transform .15s}
-.secao-colapsavel[open] summary::before{transform:rotate(90deg)}
+.secao-colapsavel .toggle-txt{flex-shrink:0;display:inline-flex;align-items:center;gap:5px;background:var(--pri);color:#fff;font-size:11px;font-weight:700;padding:6px 11px;border-radius:20px;white-space:nowrap}
+.secao-colapsavel .toggle-txt .seta{transition:transform .15s;display:inline-block}
+.secao-colapsavel .toggle-fechado{display:inline}
+.secao-colapsavel .toggle-aberto{display:none}
+.secao-colapsavel[open] .toggle-fechado{display:none}
+.secao-colapsavel[open] .toggle-aberto{display:inline}
+.secao-colapsavel[open] .toggle-txt .seta{transform:rotate(180deg)}
 .secao-colapsavel > .secao-corpo{margin-top:10px}
 
 /* detalhe município */
@@ -704,7 +710,7 @@ table.tab tr.clicavel{cursor:pointer}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="dados-pr.js?v=5"></script>
 <script src="js/app.js?v=14"></script>
-<script src="js/municipios.js?v=10"></script>
+<script src="js/municipios.js?v=11"></script>
 <script src="js/eleitoral.js?v=5"></script>
 <script src="js/radar.js?v=3"></script>
 <script src="js/materiais.js?v=2"></script>
