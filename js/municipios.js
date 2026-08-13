@@ -117,7 +117,7 @@ function abrirMunicipio(id) {
   const tabelaCandidatos = listaOrig => {
     const lista = (Array.isArray(listaOrig) ? [...listaOrig] : []).sort((a, b) => (b.votos || 0) - (a.votos || 0));
     return lista.length ? `
-    <table class="tab"><thead><tr><th>#</th><th>Candidato</th><th>Partido</th><th class="num">Votos aqui</th><th>Situação final</th></tr></thead><tbody>
+    <table class="tab table-candidato"><thead><tr><th>#</th><th>Candidato</th><th>Partido</th><th class="num">Votos aqui</th><th>Situação final</th></tr></thead><tbody>
     ${lista.map((d, i) => `<tr><td style="color:var(--tx3)">${i + 1}º</td>
       <td><b>${esc(d.nomeUrna)}</b><br><span style="font-size:11px;color:var(--tx3)">${esc(d.nome)} · nº ${esc(d.numero)}</span></td>
       <td><span class="tag azul">${esc(d.partido)}</span></td>
