@@ -200,13 +200,17 @@ function abrirMunicipio(id) {
       <div style="font-size:11px;color:var(--tx3);margin-top:-8px;margin-bottom:16px">Fonte: Novo CAGED/Ministério do Trabalho — movimentação de emprego formal no mês</div>`
       : '<div style="color:var(--tx3);font-size:12.5px;margin-bottom:16px">Sem dados de emprego para este município.</div>'}
 
-    <h3 style="font-size:13px;margin:16px 0 6px">🗳️ Deputados mais votados neste município — eleição 2022
-      <span style="float:right">
-        <button class="btn mini" id="btn-dep-est" onclick="trocarDeputados('est')">Estadual</button>
-        <button class="btn sec mini" id="btn-dep-fed" onclick="trocarDeputados('fed')">Federal</button>
-      </span></h3>
-    <div id="dep-lista-est">${tabelaCandidatos(m.depEst2022)}</div>
-    <div id="dep-lista-fed" style="display:none">${tabelaCandidatos(m.depFed2022)}</div>
+    <details class="secao-colapsavel">
+      <summary>🗳️ Deputados mais votados neste município — eleição 2022</summary>
+      <div class="secao-corpo">
+        <div style="text-align:right;margin-bottom:8px">
+          <button class="btn mini" id="btn-dep-est" onclick="trocarDeputados('est')">Estadual</button>
+          <button class="btn sec mini" id="btn-dep-fed" onclick="trocarDeputados('fed')">Federal</button>
+        </div>
+        <div id="dep-lista-est">${tabelaCandidatos(m.depEst2022)}</div>
+        <div id="dep-lista-fed" style="display:none">${tabelaCandidatos(m.depFed2022)}</div>
+      </div>
+    </details>
 
     <h3 style="font-size:13px;margin:16px 0 6px">🤝 Deputado(a) estadual indicado(a) pelo prefeito</h3>
     ${Array.isArray(m.indicacaoDeputadoEstadual) && m.indicacaoDeputadoEstadual.length ? `
@@ -216,8 +220,10 @@ function abrirMunicipio(id) {
       <div style="font-size:11px;color:var(--tx3)">Fonte: Indicação parcial dos gabinetes das prefeituras</div>`
       : '<div style="color:var(--tx3);font-size:12.5px">Sem indicação registrada para este município.</div>'}
 
-    <h3 style="font-size:13px;margin:16px 0 6px">🏛️ Vereadores eleitos em 2024 (${Array.isArray(m.vereadores2024) ? m.vereadores2024.length : 0})</h3>
-    ${tabelaCandidatos(m.vereadores2024)}
+    <details class="secao-colapsavel">
+      <summary>🏛️ Vereadores eleitos em 2024 (${Array.isArray(m.vereadores2024) ? m.vereadores2024.length : 0})</summary>
+      <div class="secao-corpo">${tabelaCandidatos(m.vereadores2024)}</div>
+    </details>
 
     <h3 style="font-size:13px;margin:16px 0 6px">🤝 Lideranças (${lids.length})
       <button class="btn mini" style="float:right" onclick="Modal.fechar();novaLideranca(${m.id})">+ Adicionar</button></h3>

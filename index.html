@@ -127,6 +127,14 @@ table.tab tr.clicavel{cursor:pointer}
 .aba{padding:9px 18px;font-size:13px;color:var(--tx2);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent}
 .aba.ativa{color:var(--tx);border-bottom-color:var(--pri);font-weight:600}
 
+/* seção retrátil (deputados/vereadores na ficha do município) */
+.secao-colapsavel{margin:16px 0}
+.secao-colapsavel summary{font-size:13px;font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:7px;color:var(--tx)}
+.secao-colapsavel summary::-webkit-details-marker{display:none}
+.secao-colapsavel summary::before{content:"▸";color:var(--tx3);font-size:11px;transition:transform .15s}
+.secao-colapsavel[open] summary::before{transform:rotate(90deg)}
+.secao-colapsavel > .secao-corpo{margin-top:10px}
+
 /* detalhe município */
 .det-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:14px}
 .det-item{background:var(--bg2);border-radius:9px;padding:10px 12px}
@@ -170,11 +178,11 @@ table.tab tr.clicavel{cursor:pointer}
   table.tab{font-size:13px}
   table.tab thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
   table.tab, table.tab tbody{display:block;width:100%}
-  table.tab tr{display:block;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:2px 14px;margin-bottom:10px}
+  table.tab tr{display:block;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:4px 14px;margin-bottom:10px}
   table.tab tbody tr:hover{background:var(--card)}
-  table.tab td{display:flex;align-items:center;justify-content:space-between;gap:14px;text-align:right;padding:9px 0;border-bottom:1px solid #1e2740}
+  table.tab td{display:block;text-align:left;padding:8px 0;border-bottom:1px solid #1e2740}
   table.tab td:last-child{border-bottom:none}
-  table.tab td::before{content:attr(data-label);color:var(--tx3);font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;font-weight:700;text-align:left;flex-shrink:0}
+  table.tab td::before{content:attr(data-label);display:block;color:var(--tx3);font-size:10px;text-transform:uppercase;letter-spacing:.3px;font-weight:700;margin-bottom:3px}
   table.tab td:empty::before{content:none}
   table.tab td:not([data-label])::before{content:none}
   .painel[style*="overflow-x"]{overflow-x:visible!important}
@@ -685,7 +693,7 @@ table.tab tr.clicavel{cursor:pointer}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="dados-pr.js?v=5"></script>
 <script src="js/app.js?v=14"></script>
-<script src="js/municipios.js?v=8"></script>
+<script src="js/municipios.js?v=9"></script>
 <script src="js/eleitoral.js?v=5"></script>
 <script src="js/radar.js?v=3"></script>
 <script src="js/materiais.js?v=2"></script>
