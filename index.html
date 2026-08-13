@@ -493,41 +493,72 @@ table.tab tr.clicavel{cursor:pointer}
     <!-- RADAR MUNICIPAL -->
     <section class="page" id="page-radar">
       <div class="page-header">
-        <div><h2>Radar Municipal</h2><div class="sub">Lideranças, expectativa de votos e onde priorizar esforço de campanha, município a município</div></div>
-      </div>
-      <div class="cards" id="radar-cards"></div>
-
-      <div class="grid-2">
-        <div class="painel">
-          <h3>🎯 Maiores oportunidades</h3>
-          <div style="font-size:12px;color:var(--tx3);margin-bottom:10px">Municípios com muito eleitorado e pouca presença de campanha ainda — ordenados pelo índice de prioridade</div>
-          <div id="radar-prioridade"></div>
-        </div>
-        <div class="painel">
-          <h3>🏆 Top 15 — expectativa de votos</h3>
-          <div class="chart-box baixo"><canvas id="chart-radar-top"></canvas></div>
-        </div>
+        <div><h2>Radar Municipal</h2><div class="sub">Selecione um município para ver lideranças, votos esperados e outros dados, tudo em um só painel</div></div>
       </div>
 
       <div class="painel">
-        <h3>Cobertura de lideranças por mesorregião</h3>
-        <div class="chart-box baixo"><canvas id="chart-radar-cobertura"></canvas></div>
-      </div>
-
-      <div class="toolbar">
-        <div class="campo grande"><label>Buscar município</label><input id="radar-busca" placeholder="Digite o nome..."></div>
-        <div class="campo"><label>Mesorregião</label><select id="radar-meso"><option value="">Todas</option></select></div>
-        <div class="campo"><label>Status</label><select id="radar-status"><option value="">Todos</option><option value="forte">Forte</option><option value="parcial">Parcial</option><option value="vazio">Sem cobertura</option></select></div>
-        <div class="campo"><label>Ordenar por</label>
-          <select id="radar-ordenar">
-            <option value="prioridade">Índice de prioridade</option>
-            <option value="expectativa">Expectativa de votos</option>
-            <option value="eleitorado">Eleitorado</option>
-            <option value="liderancas">Nº de lideranças</option>
-          </select>
+        <div class="form-grid">
+          <div class="span2">
+            <label>Buscar município</label>
+            <input id="radar-busca-mun" placeholder="Digite o nome do município...">
+            <select id="radar-select-mun" style="margin-top:8px"></select>
+          </div>
         </div>
       </div>
-      <div class="painel" style="overflow-x:auto"><div id="radar-tabela"></div></div>
+
+      <div id="radar-vazio">
+        <div class="painel">
+          <h3>🎯 Sugestões — maiores oportunidades</h3>
+          <div style="font-size:12px;color:var(--tx3);margin-bottom:10px">Municípios com muito eleitorado e pouca presença de campanha ainda registrada — clique para abrir o painel</div>
+          <div id="radar-sugestoes"></div>
+        </div>
+      </div>
+
+      <div id="radar-dashboard" style="display:none">
+        <div class="page-header" style="margin-top:4px">
+          <div><h2 id="radar-mun-nome" style="margin-bottom:2px"></h2><div class="sub" id="radar-mun-sub"></div></div>
+        </div>
+
+        <div class="cards" id="radar-mun-cards"></div>
+
+        <div class="grid-2">
+          <div class="painel">
+            <h3>🤝 Lideranças por segmento</h3>
+            <div id="radar-mun-segmentos"></div>
+          </div>
+          <div class="painel">
+            <h3>Participação na expectativa</h3>
+            <div class="chart-box baixo"><canvas id="chart-radar-mun-lid"></canvas></div>
+          </div>
+        </div>
+
+        <div class="painel" style="overflow-x:auto">
+          <h3 id="radar-mun-lid-titulo">Lideranças cadastradas</h3>
+          <div id="radar-mun-lid-tabela"></div>
+        </div>
+
+        <div class="grid-2">
+          <div class="painel">
+            <h3>🏛️ Histórico político</h3>
+            <div id="radar-mun-politico"></div>
+          </div>
+          <div class="painel">
+            <h3>📊 Perfil socioeconômico</h3>
+            <div id="radar-mun-perfil"></div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="painel">
+            <h3>🏥 Saúde e 💼 Emprego</h3>
+            <div id="radar-mun-saude-emprego"></div>
+          </div>
+          <div class="painel">
+            <h3>📦 Materiais enviados</h3>
+            <div id="radar-mun-materiais"></div>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- MATERIAIS -->
@@ -644,7 +675,7 @@ table.tab tr.clicavel{cursor:pointer}
 <script src="js/app.js?v=11"></script>
 <script src="js/municipios.js?v=8"></script>
 <script src="js/eleitoral.js?v=5"></script>
-<script src="js/radar.js?v=1"></script>
+<script src="js/radar.js?v=3"></script>
 <script src="js/materiais.js?v=2"></script>
 <script src="js/relatorios.js?v=2"></script>
 <script src="js/candidatos.js?v=12"></script>
