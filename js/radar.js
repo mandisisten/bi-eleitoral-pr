@@ -75,10 +75,11 @@
   }
   window.selecionarMunicipioRadar = selecionarMunicipio;
 
-  function tabelaTop(lista, titulo) {
-    if (!Array.isArray(lista) || !lista.length) return `<div style="font-size:12px;color:var(--tx3)">${titulo}: sem dados.</div>`;
+  function tabelaTop(listaOrig, titulo) {
+    const lista = (Array.isArray(listaOrig) ? [...listaOrig] : []).sort((a, b) => (b.votos || 0) - (a.votos || 0));
+    if (!lista.length) return `<div style="font-size:12px;color:var(--tx3)">${titulo ? titulo + ": " : ""}sem dados para este município.</div>`;
     return `
-      <div style="font-size:12px;color:var(--tx2);font-weight:600;margin:10px 0 4px">${titulo}</div>
+      ${titulo ? `<div style="font-size:12px;color:var(--tx2);font-weight:600;margin:10px 0 4px">${titulo}</div>` : ""}
       <table class="tab"><tbody>
       ${lista.slice(0, 5).map(c => `<tr><td><b>${esc(c.nomeUrna)}</b> <span style="color:var(--tx3)">(${esc(c.partido)})</span></td><td class="num">${fmtN(c.votos)}</td></tr>`).join("")}
       </tbody></table>`;
@@ -153,7 +154,6 @@
       </tbody></table>` : '<div class="vazio">Nenhuma liderança cadastrada neste município ainda.</div>';
 
     /* ---- Histórico político ---- */
-    const dep2022 = (m.depEst2022 || []).slice(0, 5);
     const indicacao = Array.isArray(m.indicacaoDeputadoEstadual) ? m.indicacaoDeputadoEstadual : [];
     $("#radar-mun-politico").innerHTML = `
       <div style="font-size:12px;color:var(--tx2);font-weight:600;margin-bottom:4px">Prefeitos (TSE)</div>
@@ -166,7 +166,15 @@
         <div style="display:flex;flex-wrap:wrap;gap:6px">
           ${indicacao.map((d, i) => `<span class="tag roxo" style="font-size:11.5px">${i === 0 ? "1ª" : "2ª"} opção: ${esc(d.nome)}${d.partido ? " · " + esc(d.partido) : ""}</span>`).join("")}
         </div>` : ""}
-      ${tabelaTop(dep2022, "Deputados estaduais mais votados (2022)")}
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0 2px">
+        <div style="font-size:12px;color:var(--tx2);font-weight:600">Deputados mais votados (2022)</div>
+        <div>
+          <button class="btn mini" id="radar-btn-dep-est" onclick="trocarDeputadosRadar('est')">Estadual</button>
+          <button class="btn sec mini" id="radar-btn-dep-fed" onclick="trocarDeputadosRadar('fed')">Federal</button>
+        </div>
+      </div>
+      <div id="radar-dep-lista-est">${tabelaTop(m.depEst2022, "")}</div>
+      <div id="radar-dep-lista-fed" style="display:none">${tabelaTop(m.depFed2022, "")}</div>
       <div style="font-size:12px;color:var(--tx2);font-weight:600;margin:10px 0 4px">Vereadores eleitos (2024)</div>
       <div style="font-size:12.5px;color:var(--tx2)">${Array.isArray(m.vereadores2024) ? m.vereadores2024.length : 0} vereador(es) eleito(s)</div>`;
 
@@ -204,6 +212,13 @@
       ${rems.slice(0, 10).map(r => `<tr><td>${esc(formatarData(r.data))}</td><td>${esc(r.materialNome)}</td><td>${esc(r.liderancaNome || "—")}</td><td class="num">${fmtN(r.qtd)}</td></tr>`).join("")}
       </tbody></table>` : '<div class="vazio">Nenhum material enviado para este município ainda.</div>';
   }
+
+  window.trocarDeputadosRadar = tipo => {
+    $("#radar-dep-lista-est").style.display = tipo === "est" ? "block" : "none";
+    $("#radar-dep-lista-fed").style.display = tipo === "fed" ? "block" : "none";
+    $("#radar-btn-dep-est").className = tipo === "est" ? "btn mini" : "btn sec mini";
+    $("#radar-btn-dep-fed").className = tipo === "fed" ? "btn mini" : "btn sec mini";
+  };
 
   function render() {
     init();
