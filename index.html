@@ -7,13 +7,13 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 :root{
-  --bg:#0d1220; --bg2:#141b2e; --card:#1a2338; --card2:#212c46; --border:#2a3552;
-  --tx:#e8edf7; --tx2:#93a1c0; --tx3:#5f6d8c;
-  --pri:#3b82f6; --pri2:#60a5fa; --ok:#22c55e; --warn:#f59e0b; --err:#ef4444; --roxo:#a78bfa;
-  --verde-pr:#10b981;
+  --bg:#0B1120; --bg2:#0F172A; --card:#151F35; --card2:#182238; --border:#26334D;
+  --tx:#F8FAFC; --tx2:#94A3B8; --tx3:#64748B;
+  --pri:#3B82F6; --pri2:#60A5FA; --ok:#22C55E; --warn:#F59E0B; --err:#EF4444; --roxo:#8B5CF6;
+  --verde-pr:#22C55E;
 }
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--tx);font-size:14px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--tx);font-size:14px;-webkit-font-smoothing:antialiased}
 a{color:var(--pri2)}
 button{font-family:inherit}
 input,select,textarea{font-family:inherit;font-size:13px;background:var(--bg2);border:1px solid var(--border);color:var(--tx);border-radius:8px;padding:8px 10px;outline:none;width:100%}
@@ -43,19 +43,83 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:4px}
 
 /* ===== LAYOUT ===== */
 #app{display:none;min-height:100vh}
-#sidebar{position:fixed;left:0;top:0;bottom:0;width:225px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:50}
-.logo{padding:20px 18px 14px;border-bottom:1px solid var(--border)}
-.logo b{font-size:16px;color:var(--tx)}
-.logo span{display:block;font-size:11px;color:var(--verde-pr);margin-top:2px;font-weight:600;letter-spacing:.4px}
-nav{flex:1;padding:12px 10px;overflow-y:auto}
-.nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;color:var(--tx2);cursor:pointer;font-size:13.5px;margin-bottom:2px;border:none;background:none;width:100%;text-align:left}
+#sidebar{position:fixed;left:0;top:0;bottom:0;width:242px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:50;transition:width .18s ease}
+#app.recolhida #sidebar{width:74px}
+.logo{display:flex;align-items:center;gap:10px;padding:19px 18px;border-bottom:1px solid var(--border);overflow:hidden;white-space:nowrap}
+.logo .marca{width:32px;height:32px;border-radius:9px;flex-shrink:0;background:linear-gradient(155deg,var(--pri),#2563eb);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:#fff}
+.logo .txt{overflow:hidden}
+.logo b{font-size:14.5px;color:var(--tx);display:block;font-weight:800;letter-spacing:.01em}
+.logo span{display:block;font-size:10.5px;color:var(--verde-pr);margin-top:1px;font-weight:700;letter-spacing:.06em}
+#app.recolhida .logo .txt{display:none}
+nav{flex:1;padding:8px 10px;overflow-y:auto;overflow-x:hidden}
+.nav-grupo{margin-top:14px}
+.nav-grupo:first-child{margin-top:2px}
+.nav-grupo-titulo{font-size:10px;font-weight:700;color:var(--tx3);letter-spacing:.08em;text-transform:uppercase;padding:0 10px;margin-bottom:5px;white-space:nowrap;overflow:hidden}
+#app.recolhida .nav-grupo-titulo{opacity:0;height:0;margin:0;overflow:hidden}
+.nav-item{position:relative;display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:9px;color:var(--tx2);cursor:pointer;font-size:13.5px;font-weight:600;margin-bottom:2px;border:none;background:none;width:100%;text-align:left;white-space:nowrap;overflow:hidden;transition:background .12s,color .12s}
+.nav-item svg{width:18px;height:18px;flex-shrink:0;opacity:.85}
 .nav-item:hover{background:var(--card);color:var(--tx)}
-.nav-item.ativo{background:var(--pri);color:#fff;font-weight:600}
-.nav-item .ico{width:20px;text-align:center;font-size:15px}
-#user-box{padding:14px 18px;border-top:1px solid var(--border);font-size:12px}
-#user-box .nome{font-weight:700;color:var(--tx)}
-#user-box .papel{color:var(--verde-pr);font-size:11px;margin-bottom:8px}
-#main{margin-left:225px;padding:24px 28px;max-width:1500px}
+.nav-item.ativo{background:#3b82f61a;color:var(--pri2);font-weight:700}
+.nav-item.ativo::before{content:"";position:absolute;left:-10px;top:6px;bottom:6px;width:3px;background:var(--pri);border-radius:0 3px 3px 0}
+#app.recolhida .nav-item{justify-content:center;padding:10px}
+#app.recolhida .nav-item .label{display:none}
+#app.recolhida .nav-item.ativo::before{left:0}
+.nav-tooltip{position:absolute;left:calc(74px + 8px);background:var(--card2);border:1px solid var(--border);padding:6px 10px;border-radius:7px;font-size:12px;font-weight:600;color:var(--tx);white-space:nowrap;pointer-events:none;opacity:0;transform:translateX(-4px);transition:opacity .1s,transform .1s;z-index:60;box-shadow:0 8px 20px #0007;display:none}
+#app.recolhida .nav-item:hover .nav-tooltip{opacity:1;transform:translateX(0);display:block}
+#btn-recolher{display:flex;align-items:center;justify-content:center;gap:8px;margin:6px 14px;padding:8px;border-radius:9px;border:1px solid var(--border);background:var(--card);color:var(--tx3);font-size:11.5px;font-weight:600}
+#btn-recolher:hover{color:var(--tx);border-color:#334066}
+#btn-recolher svg{width:15px;height:15px;transition:transform .18s}
+#app.recolhida #btn-recolher svg{transform:rotate(180deg)}
+#app.recolhida #btn-recolher .txt-recolher{display:none}
+#user-box{padding:12px 14px;border-top:1px solid var(--border);font-size:12px;display:flex;align-items:center;gap:10px}
+#user-box .av{width:30px;height:30px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,var(--roxo),var(--pri));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#fff}
+#user-box .info{overflow:hidden;white-space:nowrap;flex:1}
+#user-box .nome{font-weight:700;color:var(--tx);font-size:12.5px;overflow:hidden;text-overflow:ellipsis}
+#user-box .papel{color:var(--tx3);font-size:11px;margin-top:1px}
+#app.recolhida #user-box .info{display:none}
+#app.recolhida #user-box{justify-content:center}
+#app.recolhida #user-box .btn{display:none}
+#main{margin-left:242px;transition:margin-left .18s ease;max-width:1500px}
+#app.recolhida #main{margin-left:74px}
+.topbar{position:sticky;top:0;z-index:30;background:#0B1120ee;backdrop-filter:blur(10px);border-bottom:1px solid var(--border);padding:16px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.topbar-titulos{min-width:0}
+.topbar-migalha{font-size:11.5px;color:var(--tx3);margin-bottom:3px}
+.topbar-migalha b{color:var(--tx2);font-weight:600}
+.topbar h1{font-size:22px;font-weight:800;letter-spacing:-.01em}
+.topbar .sub{color:var(--tx2);font-size:12.5px;margin-top:2px}
+.topbar-direita{display:flex;align-items:center;gap:12px;flex-shrink:0}
+.topbar-chip{display:flex;flex-direction:column;align-items:flex-end;padding:6px 12px;border-radius:9px;border:1px solid var(--border);background:var(--card);font-size:10.5px;color:var(--tx3);line-height:1.3}
+.topbar-chip b{font-size:12px;color:var(--tx);font-weight:700}
+.topbar-avatar{width:34px;height:34px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,var(--roxo),var(--pri));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12.5px;color:#fff}
+
+.topbar-busca{position:relative;display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:8px 12px;width:260px;color:var(--tx3);flex-shrink:0}
+.topbar-busca svg{width:15px;height:15px;flex-shrink:0}
+.topbar-busca input{background:none;border:none;padding:0;width:100%;color:var(--tx);font-size:12.5px}
+.topbar-busca input:focus{outline:none}
+.busca-resultados{display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--card2);border:1px solid var(--border);border-radius:10px;box-shadow:0 12px 30px #0009;max-height:360px;overflow-y:auto;z-index:90}
+.busca-resultados.aberto{display:block}
+.busca-grupo-titulo{font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em;padding:9px 12px 4px}
+.busca-item{display:flex;flex-direction:column;padding:8px 12px;cursor:pointer;color:var(--tx)}
+.busca-item:hover{background:var(--card)}
+.busca-item b{font-size:12.5px;font-weight:600}
+.busca-item span{font-size:11px;color:var(--tx3)}
+.busca-vazio{padding:16px 12px;font-size:12px;color:var(--tx3);text-align:center}
+
+.topbar-notif-wrap{position:relative}
+.topbar-icobtn{position:relative;width:36px;height:36px;border-radius:9px;background:var(--card);border:1px solid var(--border);color:var(--tx2);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.topbar-icobtn:hover{color:var(--tx);border-color:#334066}
+.topbar-icobtn svg{width:17px;height:17px}
+.topbar-notif-dot{position:absolute;top:6px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--err);border:2px solid var(--bg2)}
+.topbar-notif-painel{display:none;position:absolute;top:calc(100% + 8px);right:0;width:320px;background:var(--card2);border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 30px #0009;max-height:400px;overflow-y:auto;z-index:90}
+.topbar-notif-painel.aberto{display:block}
+.topbar-notif-titulo{font-size:12px;font-weight:700;color:var(--tx);padding:12px 14px;border-bottom:1px solid var(--border)}
+.notif-item{display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-bottom:1px solid var(--border)}
+.notif-item:last-child{border-bottom:none}
+.notif-ico{font-size:15px;flex-shrink:0}
+.notif-texto{flex:1;font-size:12px;color:var(--tx2);line-height:1.4}
+.notif-texto b{color:var(--tx)}
+.notif-data{font-size:10.5px;color:var(--tx3);white-space:nowrap;flex-shrink:0}
+.conteudo{padding:24px 28px}
 .page{display:none}
 .page.ativa{display:block}
 .page-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap}
@@ -63,27 +127,55 @@ nav{flex:1;padding:12px 10px;overflow-y:auto}
 .page-header .sub{color:var(--tx2);font-size:12.5px;margin-top:3px}
 
 /* ===== COMPONENTES ===== */
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:18px}
-.card-kpi{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
-.card-kpi .rotulo{font-size:11.5px;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px}
-.card-kpi .valor{font-size:22px;font-weight:800;margin-top:6px}
-.card-kpi .extra{font-size:11.5px;color:var(--tx3);margin-top:4px}
-.card-kpi.destaque{border-color:var(--pri);background:linear-gradient(135deg,var(--card),#1a2a4d)}
-.painel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px}
-.painel h3{font-size:14px;margin-bottom:12px;color:var(--tx)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;margin-bottom:20px}
+.card-kpi{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:17px;transition:border-color .15s,transform .15s}
+.card-kpi:hover{border-color:#334066;transform:translateY(-1px)}
+.card-kpi .rotulo{font-size:10.5px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+.card-kpi .valor{font-size:26px;font-weight:800;margin-top:8px;letter-spacing:-.01em}
+.card-kpi .extra{font-size:11.5px;color:var(--tx3);margin-top:6px}
+.card-kpi.destaque{border-color:var(--pri);background:linear-gradient(150deg,var(--card) 0%,#152645 100%)}
+.painel{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:16px}
+.painel h3{font-size:14.5px;font-weight:700;margin-bottom:14px;color:var(--tx)}
 .chart-box{position:relative;height:280px}
 .chart-box.baixo{height:220px}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid-2.grid-mapa{grid-template-columns:1.6fr 1fr;align-items:start}
+.grid-2.grid-mapa>div:last-child .painel:last-child{margin-bottom:0}
 .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
-@media(max-width:1100px){.grid-2,.grid-3{grid-template-columns:1fr}}
+@media(max-width:1100px){.grid-2,.grid-3,.grid-2.grid-mapa{grid-template-columns:1fr}}
+.mini-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mini-stat{background:var(--bg2);border-radius:9px;padding:11px 12px}
+.mini-stat .r{font-size:9.5px;color:var(--tx3);text-transform:uppercase;font-weight:700;letter-spacing:.04em}
+.mini-stat .v{font-size:18px;font-weight:800;margin-top:3px}
+.alerta-item{display:flex;align-items:flex-start;gap:10px;padding:10px 11px;border-radius:9px;background:var(--bg2);margin-bottom:8px;font-size:12px;font-weight:600;line-height:1.4}
+.alerta-item:last-child{margin-bottom:0}
+.alerta-item .aico{width:26px;height:26px;border-radius:7px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px}
+.opor-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+@media(max-width:1100px){.opor-grid{grid-template-columns:1fr}}
+.opor-col{background:var(--bg2);border-radius:12px;padding:14px;border-top:3px solid var(--border)}
+.opor-col.alta{border-top-color:var(--warn)}
+.opor-col.media{border-top-color:var(--pri)}
+.opor-col.baixa{border-top-color:var(--tx3)}
+.opor-col-titulo{font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;margin-bottom:10px}
+.opor-col.alta .opor-col-titulo{color:var(--warn)}
+.opor-col.media .opor-col-titulo{color:var(--pri2)}
+.opor-col.baixa .opor-col-titulo{color:var(--tx3)}
+.opor-card{background:var(--card);border-radius:9px;padding:10px 11px;margin-bottom:8px;cursor:pointer}
+.opor-card:last-child{margin-bottom:0}
+.opor-card:hover{background:var(--card2)}
+.opor-card .nm{font-size:12.5px;font-weight:700}
+.opor-card .meta{display:flex;justify-content:space-between;margin-top:5px;font-size:10.5px;color:var(--tx3)}
+.opor-card .meta b{color:var(--tx2);font-weight:700}
 .toolbar{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:14px}
 .toolbar .campo{min-width:150px}
 .toolbar .campo.grande{flex:1;min-width:220px}
 
 table.tab{width:100%;border-collapse:collapse;font-size:13px}
-table.tab th{color:var(--tx2);text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;cursor:pointer;user-select:none}
+table.tab th{color:var(--tx3);text-align:left;padding:11px 14px;background:var(--card2);border-bottom:1px solid var(--border);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;cursor:pointer;user-select:none}
+table.tab th:hover{color:var(--tx2)}
 table.tab th.num,table.tab td.num{text-align:right}
-table.tab td{padding:8px 10px;border-bottom:1px solid #1e2740;vertical-align:middle}
+table.tab td{padding:11px 14px;border-bottom:1px solid var(--card2);vertical-align:middle}
+table.tab tbody tr:last-child td{border-bottom:none}
 table.tab tbody tr:hover{background:var(--card2)}
 table.tab tr.clicavel{cursor:pointer}
 .tag{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700}
@@ -97,8 +189,50 @@ table.tab tr.clicavel{cursor:pointer}
 .barra-prog>div{height:100%;background:var(--pri);border-radius:4px}
 .vazio{padding:30px;text-align:center;color:var(--tx3);font-size:13px}
 
+/* cartões de relatório */
+.rel-grupo{margin-bottom:22px}
+.rel-grupo-titulo{font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.rel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.rel-card{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;cursor:pointer;transition:border-color .15s,transform .15s}
+.rel-card:hover{border-color:var(--pri);transform:translateY(-1px)}
+.rel-card.ativo{border-color:var(--pri);background:linear-gradient(150deg,var(--card) 0%,#152645 100%)}
+.rel-card .rel-ico{font-size:19px}
+.rel-card b{font-size:13px;font-weight:700;color:var(--tx)}
+.rel-card span{font-size:11.5px;color:var(--tx3);line-height:1.4}
+
+/* agenda */
+.agenda-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.chip-filtro{padding:7px 14px;border-radius:20px;border:1px solid var(--border);background:var(--card);color:var(--tx2);font-size:12px;font-weight:600;cursor:pointer}
+.chip-filtro.ativo{background:var(--pri);border-color:var(--pri);color:#fff}
+.chip-filtros{display:flex;gap:6px;flex-wrap:wrap}
+.view-switch{display:flex;gap:3px;background:var(--bg2);padding:3px;border-radius:9px}
+.view-switch button{padding:7px 13px;font-size:12px;font-weight:700;color:var(--tx3);background:none;border:none;border-radius:7px;cursor:pointer}
+.view-switch button.ativo{background:var(--pri);color:#fff}
+.agenda-item{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg2);border-radius:12px;margin-bottom:10px}
+.agenda-item:last-child{margin-bottom:0}
+.agenda-data{width:50px;flex-shrink:0;text-align:center;background:var(--card);border-radius:8px;padding:6px 0}
+.agenda-data .d{font-size:16px;font-weight:800}
+.agenda-data .m{font-size:9.5px;color:var(--tx3);text-transform:uppercase;font-weight:700}
+.agenda-faixa{width:4px;align-self:stretch;border-radius:3px;flex-shrink:0}
+.agenda-info{flex:1;min-width:0}
+.agenda-info b{font-size:13.5px;font-weight:700}
+.agenda-info span{display:block;font-size:11.5px;color:var(--tx3);margin-top:1px}
+.agenda-tag{font-size:10.5px;font-weight:700;padding:3px 10px;border-radius:20px;flex-shrink:0}
+.cal-grade{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.cal-dia-semana{font-size:10px;color:var(--tx3);text-transform:uppercase;font-weight:700;text-align:center;padding-bottom:6px}
+.cal-dia{aspect-ratio:1;border-radius:9px;background:var(--bg2);padding:6px;font-size:11.5px;color:var(--tx2);position:relative;cursor:default}
+.cal-dia.hoje{background:#3b82f61a;color:var(--pri2);font-weight:800;border:1px solid var(--pri)}
+.cal-dia.tem-evento{cursor:pointer}
+.cal-dia.tem-evento:hover{background:var(--card2)}
+.cal-dia .pontos{position:absolute;bottom:5px;left:6px;display:flex;gap:2px}
+.cal-dia .pontos span{width:5px;height:5px;border-radius:50%}
+.cal-mes-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.cal-mes-nav b{font-size:14px}
+.cal-mes-nav button{background:var(--bg2);border:1px solid var(--border);color:var(--tx2);width:30px;height:30px;border-radius:8px;cursor:pointer}
+
 /* mapa */
 #mapa,#mapa-cand{height:520px;border-radius:10px;background:var(--bg2)}
+#mapa{height:420px}
 .leaflet-container{background:var(--bg2)!important;font:inherit}
 .mapa-legenda{background:var(--card);padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:11px;color:var(--tx);line-height:1.7}
 .mapa-legenda i{display:inline-block;width:14px;height:11px;margin-right:5px;border-radius:2px;vertical-align:-1px}
@@ -123,8 +257,8 @@ table.tab tr.clicavel{cursor:pointer}
 @keyframes subir{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
 
 /* abas */
-.abas{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:16px}
-.aba{padding:9px 18px;font-size:13px;color:var(--tx2);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent}
+.abas{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:16px;overflow-x:auto}
+.aba{padding:9px 18px;font-size:13px;color:var(--tx2);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;white-space:nowrap;flex-shrink:0}
 .aba.ativa{color:var(--tx);border-bottom-color:var(--pri);font-weight:600}
 
 /* seção retrátil (deputados/vereadores na ficha do município) */
@@ -152,8 +286,9 @@ table.tab tr.clicavel{cursor:pointer}
 /* impressão de relatórios */
 @media print{
   body{background:#fff;color:#000}
-  #sidebar,#toasts,.no-print,.toolbar,.page-header .acoes{display:none!important}
-  #main{margin:0;padding:0;max-width:none}
+  #sidebar,.topbar,#toasts,.no-print,.toolbar,.page-header .acoes{display:none!important}
+  #main{margin:0;max-width:none}
+  .conteudo{padding:0}
   .page{display:none}
   #page-relatorios{display:block}
   .painel{border:none;background:#fff;padding:0}
@@ -165,15 +300,23 @@ table.tab tr.clicavel{cursor:pointer}
 #rel-cabecalho-print{display:none}
 
 /* ===== MOBILE ===== */
-.btn-menu-mobile{display:none;position:fixed;top:14px;left:14px;z-index:60;background:var(--card);border:1px solid var(--border);color:var(--tx);width:42px;height:42px;border-radius:9px;font-size:19px;cursor:pointer}
+.btn-menu-mobile{display:none;align-items:center;justify-content:center;flex-shrink:0;background:var(--card);border:1px solid var(--border);color:var(--tx);width:38px;height:38px;border-radius:9px;font-size:18px;cursor:pointer}
 #sidebar-backdrop{display:none;position:fixed;inset:0;background:#000a;z-index:45}
 .mobile-home{display:none}
 @media(max-width:860px){
-  .btn-menu-mobile{display:block}
+  .btn-menu-mobile{display:flex}
   #sidebar{transform:translateX(-100%);transition:transform .22s ease;z-index:70;width:250px}
+  #app.recolhida #sidebar{width:250px}
   #sidebar.aberta{transform:translateX(0)}
   #sidebar-backdrop.aberta{display:block}
-  #main{margin-left:0;padding:70px 14px 24px}
+  #main,#app.recolhida #main{margin-left:0}
+  .conteudo{padding:18px 16px 40px}
+  #btn-recolher{display:none}
+  .topbar{padding:14px 16px}
+  .topbar-chip{display:none}
+  .topbar-busca{display:none}
+  .topbar-notif-painel{position:fixed;top:64px;right:8px;left:8px;width:auto}
+  .topbar h1{font-size:19px}
   .page-header{flex-direction:column;align-items:flex-start!important}
   .page-header .acoes{width:100%}
   .page-header .acoes .btn{width:100%}
@@ -182,7 +325,9 @@ table.tab tr.clicavel{cursor:pointer}
 
   /* tabelas viram cartões empilhados no celular (em vez de scroll horizontal) */
   table.tab{font-size:13px}
-  table.tab thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+  table.tab thead{display:block}
+  table.tab thead tr{display:block}
+  table.tab thead th{display:block;position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
   table.tab, table.tab tbody{display:block;width:100%}
   table.tab tr{display:block;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:4px 14px;margin-bottom:10px}
   table.tab tbody tr:hover{background:var(--card)}
@@ -236,6 +381,10 @@ table.tab tr.clicavel{cursor:pointer}
   table.tab.table-liderancas td:nth-child(5)::before{text-align:right}
   table.tab.table-liderancas td:nth-child(5) b{color:var(--pri2);font-size:14px}
 
+  .agenda-toolbar{flex-direction:column;align-items:stretch}
+  .cal-dia{font-size:9.5px;padding:4px}
+  .cal-dia .d{display:block}
+
   .cards{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:9px}
   .det-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
   .toolbar .campo,.toolbar .campo.grande{min-width:0;flex:1 1 100%}
@@ -246,8 +395,9 @@ table.tab tr.clicavel{cursor:pointer}
      cards de KPI (duplicados na home) e os gráficos somem. */
   #page-dashboard .dash-desktop{display:block}
   #page-dashboard .dash-desktop > .cards,
-  #page-dashboard .dash-desktop > .grid-2{display:none}
+  #page-dashboard .dash-desktop > .grid-2:not(.grid-mapa){display:none}
   #page-dashboard .mobile-home{display:block}
+  #page-dashboard .grid-mapa{grid-template-columns:1fr}
   .mh-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
   .mh-saudacao{font-size:19px;font-weight:800}
   .mh-papel{font-size:12.5px;color:var(--tx2);margin-top:2px}
@@ -309,35 +459,124 @@ table.tab tr.clicavel{cursor:pointer}
 
 <!-- ============ APP ============ -->
 <div id="app">
-  <button class="btn-menu-mobile" id="btn-menu-mobile" aria-label="Abrir menu">☰</button>
   <div id="sidebar-backdrop"></div>
   <aside id="sidebar">
-    <div class="logo"><b>BI Paraná</b><span id="logo-sub">PAINEL ELEITORAL</span></div>
-    <div id="badge-campanha" style="display:none;padding:10px 18px;border-bottom:1px solid var(--border);font-size:11.5px;color:var(--tx2)">
-      Campanha ativa<br><b id="badge-campanha-nome" style="color:var(--tx);font-size:12.5px">—</b>
-      <button class="btn sec mini" style="width:100%;margin-top:6px" onclick="sairDaCampanha()">← Trocar campanha</button>
+    <div class="logo">
+      <div class="marca">BP</div>
+      <div class="txt"><b>BI PARANÁ</b><span id="logo-sub">PAINEL ELEITORAL</span></div>
+    </div>
+    <div id="badge-campanha" style="display:none;margin:10px 14px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:9px;font-size:11px;color:var(--tx3)">
+      Campanha ativa<br><b id="badge-campanha-nome" style="color:var(--tx);font-size:12.5px;display:block;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</b>
+      <button class="btn sec mini" style="width:100%;margin-top:8px" onclick="sairDaCampanha()">← Trocar campanha</button>
     </div>
     <nav>
-      <button class="nav-item" data-pagina="campanhas" id="nav-campanhas" style="display:none"><span class="ico">🏢</span>Campanhas</button>
-      <button class="nav-item ativo" data-pagina="dashboard"><span class="ico">📊</span>Visão Geral</button>
-      <button class="nav-item" data-pagina="municipios"><span class="ico">🏛️</span>Municípios</button>
-      <button class="nav-item" data-pagina="liderancas"><span class="ico">🤝</span>Lideranças</button>
-      <button class="nav-item" data-pagina="votos"><span class="ico">🗳️</span>Expectativa de Votos</button>
-      <button class="nav-item" data-pagina="candidatos"><span class="ico">📍</span>Votação por Candidato</button>
-      <button class="nav-item" data-pagina="radar"><span class="ico">🎯</span>Radar Municipal</button>
-      <button class="nav-item" data-pagina="materiais"><span class="ico">📦</span>Materiais</button>
-      <button class="nav-item" data-pagina="agenda"><span class="ico">📅</span>Agenda</button>
-      <button class="nav-item" data-pagina="relatorios"><span class="ico">📄</span>Relatórios</button>
-      <button class="nav-item" data-pagina="config" id="nav-config"><span class="ico">⚙️</span>Configurações</button>
+      <button class="nav-item" data-pagina="campanhas" id="nav-campanhas" style="display:none">
+        <svg viewBox="0 0 20 20" fill="none"><path d="M3 17V5.5a1 1 0 0 1 1-1h4.5v12.5M9.5 17V9h5.5a1 1 0 0 1 1 1v7M3 17h13.5M6 7.5h.01M6 10.5h.01M6 13.5h.01" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="label">Campanhas</span><span class="nav-tooltip">Campanhas</span>
+      </button>
+
+      <div class="nav-grupo">
+        <div class="nav-grupo-titulo">Visão Geral</div>
+        <button class="nav-item ativo" data-pagina="dashboard">
+          <svg viewBox="0 0 20 20" fill="none"><rect x="2.5" y="2.5" width="6.5" height="6.5" rx="1.6" stroke="currentColor" stroke-width="1.6"/><rect x="11" y="2.5" width="6.5" height="6.5" rx="1.6" stroke="currentColor" stroke-width="1.6"/><rect x="2.5" y="11" width="6.5" height="6.5" rx="1.6" stroke="currentColor" stroke-width="1.6"/><rect x="11" y="11" width="6.5" height="6.5" rx="1.6" stroke="currentColor" stroke-width="1.6"/></svg>
+          <span class="label">Dashboard</span><span class="nav-tooltip">Dashboard</span>
+        </button>
+      </div>
+
+      <div class="nav-grupo">
+        <div class="nav-grupo-titulo">Estratégia</div>
+        <button class="nav-item" data-pagina="municipios">
+          <svg viewBox="0 0 20 20" fill="none"><path d="M10 18s6-5.2 6-10.2A6 6 0 1 0 4 7.8C4 12.8 10 18 10 18Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="10" cy="7.6" r="2.1" stroke="currentColor" stroke-width="1.6"/></svg>
+          <span class="label">Municípios</span><span class="nav-tooltip">Municípios</span>
+        </button>
+        <button class="nav-item" data-pagina="radar">
+          <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7.3" stroke="currentColor" stroke-width="1.6"/><circle cx="10" cy="10" r="4.2" stroke="currentColor" stroke-width="1.6"/><circle cx="10" cy="10" r="1.3" fill="currentColor"/></svg>
+          <span class="label">Radar Municipal</span><span class="nav-tooltip">Radar Municipal</span>
+        </button>
+        <button class="nav-item" data-pagina="votos">
+          <svg viewBox="0 0 20 20" fill="none"><path d="M3 16.5V11l3.5-2 3.5 2.5 3.5-3.5 3.5 3v5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="label">Expectativa de Votos</span><span class="nav-tooltip">Expectativa de Votos</span>
+        </button>
+        <button class="nav-item" data-pagina="candidatos">
+          <svg viewBox="0 0 20 20" fill="none"><rect x="3" y="3" width="14" height="14" rx="3" stroke="currentColor" stroke-width="1.6"/><path d="M6.5 10.2l2.2 2.2 4.8-4.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="label">Votação por Candidato</span><span class="nav-tooltip">Votação por Candidato</span>
+        </button>
+      </div>
+
+      <div class="nav-grupo">
+        <div class="nav-grupo-titulo">Campo</div>
+        <button class="nav-item" data-pagina="liderancas">
+          <svg viewBox="0 0 20 20" fill="none"><circle cx="7" cy="6.5" r="2.6" stroke="currentColor" stroke-width="1.6"/><path d="M2 17c0-2.9 2.2-5 5-5s5 2.1 5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="14.5" cy="7" r="2.1" stroke="currentColor" stroke-width="1.6"/><path d="M12.6 17c.2-2.5 1.9-4.3 4.4-4.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <span class="label">Lideranças</span><span class="nav-tooltip">Lideranças</span>
+        </button>
+        <button class="nav-item" data-pagina="agenda">
+          <svg viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="13" rx="2.5" stroke="currentColor" stroke-width="1.6"/><path d="M3 8h14M7 2.5v3M13 2.5v3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <span class="label">Agenda</span><span class="nav-tooltip">Agenda</span>
+        </button>
+        <button class="nav-item" data-pagina="materiais">
+          <svg viewBox="0 0 20 20" fill="none"><path d="M10 2.5l7 3.6v7.8L10 17.5l-7-3.6V6.1L10 2.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M3 6.2 10 9.8l7-3.6M10 9.8v7.5" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          <span class="label">Materiais</span><span class="nav-tooltip">Materiais</span>
+        </button>
+      </div>
+
+      <div class="nav-grupo">
+        <div class="nav-grupo-titulo">Análises</div>
+        <button class="nav-item" data-pagina="relatorios">
+          <svg viewBox="0 0 20 20" fill="none"><rect x="4" y="2.5" width="12" height="15" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M7 7h6M7 10.2h6M7 13.4h3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <span class="label">Relatórios</span><span class="nav-tooltip">Relatórios</span>
+        </button>
+      </div>
+
+      <div class="nav-grupo">
+        <div class="nav-grupo-titulo">Sistema</div>
+        <button class="nav-item" data-pagina="config" id="nav-config">
+          <svg viewBox="0 0 20 20" fill="none"><path d="M3 6h9M15.5 6h1.5M3 10h5M10.5 10H17M3 14h9M15.5 14H17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="6" r="2" stroke="currentColor" stroke-width="1.6"/><circle cx="7.5" cy="10" r="2" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="14" r="2" stroke="currentColor" stroke-width="1.6"/></svg>
+          <span class="label">Configurações</span><span class="nav-tooltip">Configurações</span>
+        </button>
+      </div>
     </nav>
+
+    <button id="btn-recolher">
+      <svg viewBox="0 0 20 20" fill="none"><path d="M12.5 4 7 10l5.5 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="txt-recolher">Recolher menu</span>
+    </button>
+
     <div id="user-box">
-      <div class="nome" id="user-nome">—</div>
-      <div class="papel" id="user-papel">—</div>
+      <div class="av" id="user-avatar">?</div>
+      <div class="info">
+        <div class="nome" id="user-nome">—</div>
+        <div class="papel" id="user-papel">—</div>
+      </div>
       <button class="btn sec mini" id="btn-sair">Sair</button>
     </div>
   </aside>
 
   <main id="main">
+    <header class="topbar">
+      <button class="btn-menu-mobile" id="btn-menu-mobile" aria-label="Abrir menu">☰</button>
+      <div class="topbar-titulos">
+        <div class="topbar-migalha" id="topbar-migalha"><b>Dashboard</b></div>
+        <h1 id="topbar-titulo">Painel de Controle</h1>
+        <div class="sub" id="topbar-sub">Eleições 2026 · Paraná</div>
+      </div>
+      <div class="topbar-busca" id="topbar-busca-wrap">
+        <svg viewBox="0 0 20 20" fill="none"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.6"/><path d="M16 16l-3.3-3.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <input id="topbar-busca-input" placeholder="Buscar município ou liderança…" autocomplete="off">
+        <div class="busca-resultados" id="topbar-busca-resultados"></div>
+      </div>
+      <div class="topbar-direita">
+        <div class="topbar-chip">Campanha<b id="topbar-campanha">—</b></div>
+        <div class="topbar-notif-wrap">
+          <button class="topbar-icobtn" id="topbar-notif-btn" title="Notificações"><span class="topbar-notif-dot" id="topbar-notif-dot" style="display:none"></span>
+            <svg viewBox="0 0 20 20" fill="none"><path d="M6 8a4 4 0 0 1 8 0c0 3.4 1.2 4.6 1.5 5H4.5c.3-.4 1.5-1.6 1.5-5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8.2 15.5a1.8 1.8 0 0 0 3.6 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </button>
+          <div class="topbar-notif-painel" id="topbar-notif-painel"></div>
+        </div>
+        <div class="topbar-avatar" id="topbar-avatar">?</div>
+      </div>
+    </header>
+
+    <div class="conteudo">
 
     <!-- DASHBOARD -->
     <section class="page ativa" id="page-dashboard">
@@ -374,31 +613,49 @@ table.tab tr.clicavel{cursor:pointer}
       <!-- Painéis completos: só aparecem no desktop -->
       <div class="dash-desktop">
         <div class="cards" id="dash-cards"></div>
-        <div class="painel">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px">
-            <h3 style="margin:0">Mapa do Paraná</h3>
-            <select id="mapa-metrica" style="width:auto">
-              <option value="expectativa">Expectativa de votos</option>
-              <option value="cobertura">Cobertura de lideranças</option>
-              <option value="lid_prefeitos">Liderança — Prefeitos</option>
-              <option value="lid_vices">Liderança — Vice-prefeitos</option>
-              <option value="lid_vereadores">Liderança — Vereadores</option>
-              <option value="lid_cargo_eletivo">Liderança — qualquer cargo eletivo</option>
-              <option value="eleitorado">Eleitorado (TSE 2024)</option>
-              <option value="pop">População (IBGE 2024)</option>
-              <option value="pib">PIB per capita</option>
-              <option value="partido">Partido do prefeito</option>
-            </select>
+
+        <div class="grid-2 grid-mapa">
+          <div class="painel">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+              <div><h3 style="margin:0">Mapa estratégico do Paraná</h3><div style="font-size:11px;color:var(--tx3);margin-top:2px">399 municípios · clique para abrir a ficha</div></div>
+              <select id="mapa-metrica" style="width:auto">
+                <option value="expectativa">Expectativa de votos</option>
+                <option value="cobertura">Cobertura de lideranças</option>
+                <option value="lid_prefeitos">Liderança — Prefeitos</option>
+                <option value="lid_vices">Liderança — Vice-prefeitos</option>
+                <option value="lid_vereadores">Liderança — Vereadores</option>
+                <option value="lid_cargo_eletivo">Liderança — qualquer cargo eletivo</option>
+                <option value="eleitorado">Eleitorado (TSE 2024)</option>
+                <option value="pop">População (IBGE 2024)</option>
+                <option value="pib">PIB per capita</option>
+                <option value="partido">Partido do prefeito</option>
+              </select>
+            </div>
+            <div id="mapa"></div>
           </div>
-          <div id="mapa"></div>
+          <div>
+            <div class="painel"><h3>Resumo territorial</h3><div id="dash-resumo"></div></div>
+            <div class="painel"><h3>Alertas</h3><div id="dash-alertas"></div></div>
+          </div>
         </div>
+
+        <div class="painel">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+            <h3 style="margin:0">Principais municípios<div style="font-size:11px;color:var(--tx3);font-weight:400;margin-top:2px">ordenado por expectativa de votos · clique numa coluna pra ordenar</div></h3>
+          </div>
+          <div class="toolbar" style="margin-bottom:10px"><div class="campo grande"><input id="dash-top-busca" placeholder="Buscar município..."></div></div>
+          <div id="dash-top-tabela" style="overflow-x:auto"></div>
+        </div>
+
+        <div class="painel">
+          <h3>🎯 Radar de oportunidades</h3>
+          <div style="font-size:11.5px;color:var(--tx3);margin-bottom:12px">Municípios com eleitorado grande e sem liderança cadastrada ainda — ordenados por eleitorado, prioridade mais alta primeiro.</div>
+          <div id="dash-oportunidades"></div>
+        </div>
+
         <div class="grid-2">
-          <div class="painel"><h3>Top 12 municípios — expectativa de votos</h3><div class="chart-box"><canvas id="chart-top-exp"></canvas></div></div>
           <div class="painel"><h3>Prefeitos eleitos em 2024 por partido</h3><div class="chart-box"><canvas id="chart-partidos"></canvas></div></div>
-        </div>
-        <div class="grid-2">
           <div class="painel"><h3>Expectativa de votos por mesorregião</h3><div class="chart-box"><canvas id="chart-meso"></canvas></div></div>
-          <div class="painel"><h3>Cobertura da campanha</h3><div id="dash-cobertura"></div></div>
         </div>
       </div>
     </section>
@@ -663,39 +920,72 @@ table.tab tr.clicavel{cursor:pointer}
         <div><h2>Agenda de Campanha</h2><div class="sub">Visitas, reuniões e eventos por município</div></div>
         <div class="acoes"><button class="btn" id="btn-novo-evento">+ Novo compromisso</button></div>
       </div>
-      <div class="painel" style="overflow-x:auto"><div id="agenda-tabela"></div></div>
+      <div class="agenda-toolbar no-print">
+        <div class="chip-filtros" id="agenda-periodo">
+          <button class="chip-filtro ativo" data-periodo="hoje">Hoje</button>
+          <button class="chip-filtro" data-periodo="semana">Esta semana</button>
+          <button class="chip-filtro" data-periodo="proximos">Próximos</button>
+          <button class="chip-filtro" data-periodo="todos">Todos</button>
+        </div>
+        <div class="view-switch" id="agenda-view-switch">
+          <button class="ativo" data-view="lista">☰ Lista</button>
+          <button data-view="calendario">📅 Calendário</button>
+        </div>
+      </div>
+      <div class="painel">
+        <div id="agenda-lista"></div>
+        <div id="agenda-calendario" style="display:none"></div>
+      </div>
     </section>
 
     <!-- RELATÓRIOS -->
     <section class="page" id="page-relatorios">
       <div class="page-header">
-        <div><h2>Relatórios</h2><div class="sub">Gere, imprima ou exporte em CSV</div></div>
+        <div><h2>Relatórios</h2><div class="sub">Escolha um relatório para gerar — depois exporte em CSV ou imprima</div></div>
       </div>
       <div class="toolbar no-print">
-        <div class="campo grande"><label>Relatório</label>
-          <select id="rel-tipo">
-            <option value="expectativa">Expectativa de votos por município</option>
-            <option value="meso">Expectativa por mesorregião</option>
-            <option value="liderancas">Lideranças (completo)</option>
-            <option value="materiais_lid">Materiais enviados por liderança</option>
-            <option value="materiais_mun">Materiais enviados por município</option>
-            <option value="sem_cobertura">Municípios sem cobertura (por eleitorado)</option>
-            <option value="lid_cargo_eletivo">Lideranças com cargo eletivo (prefeitos/vices/vereadores)</option>
-            <option value="ranking">Ranking socioeconômico dos municípios</option>
-            <option value="prefeitos">Prefeitos 2024 por partido</option>
-            <option value="vereadores">Vereadores eleitos 2024 por município</option>
-            <option value="dep_estadual">Deputados estaduais mais votados por município (2022)</option>
-            <option value="dep_federal">Deputados federais mais votados por município (2022)</option>
-            <option value="agro">Potencial agropecuário por município</option>
-          </select>
-        </div>
-        <div class="campo"><label>Mesorregião</label><select id="rel-meso"><option value="">Todas</option></select></div>
-        <div class="campo"><label>&nbsp;</label><button class="btn" id="btn-gerar-rel">Gerar</button></div>
-        <div class="campo"><label>&nbsp;</label><button class="btn sec" id="btn-rel-csv" disabled>Exportar CSV</button></div>
-        <div class="campo"><label>&nbsp;</label><button class="btn sec" id="btn-rel-print" disabled>Imprimir</button></div>
+        <div class="campo" style="max-width:260px"><label>Filtrar por mesorregião (opcional)</label><select id="rel-meso"><option value="">Todas</option></select></div>
       </div>
+
+      <div class="rel-grupo no-print">
+        <div class="rel-grupo-titulo">Território &amp; economia</div>
+        <div class="rel-grid">
+          <button class="rel-card" data-tipo="expectativa"><span class="rel-ico">🗳️</span><b>Expectativa por município</b><span>Ranking de votos esperados, com meta e % atingido</span></button>
+          <button class="rel-card" data-tipo="meso"><span class="rel-ico">🗺️</span><b>Expectativa por mesorregião</b><span>Totais agregados por região do estado</span></button>
+          <button class="rel-card" data-tipo="sem_cobertura"><span class="rel-ico">⚠️</span><b>Municípios sem cobertura</b><span>Maior eleitorado ainda sem liderança cadastrada</span></button>
+          <button class="rel-card" data-tipo="ranking"><span class="rel-ico">📊</span><b>Ranking socioeconômico</b><span>População, PIB e área por município</span></button>
+          <button class="rel-card" data-tipo="agro"><span class="rel-ico">🌾</span><b>Potencial agropecuário</b><span>Produção agrícola e rebanhos por município</span></button>
+        </div>
+      </div>
+
+      <div class="rel-grupo no-print">
+        <div class="rel-grupo-titulo">Lideranças</div>
+        <div class="rel-grid">
+          <button class="rel-card" data-tipo="liderancas"><span class="rel-ico">🤝</span><b>Lideranças (completo)</b><span>Base completa com contato, status e expectativa</span></button>
+          <button class="rel-card" data-tipo="lid_cargo_eletivo"><span class="rel-ico">🏛️</span><b>Lideranças com cargo eletivo</b><span>Prefeitos, vices e vereadores aliados</span></button>
+        </div>
+      </div>
+
+      <div class="rel-grupo no-print">
+        <div class="rel-grupo-titulo">Materiais</div>
+        <div class="rel-grid">
+          <button class="rel-card" data-tipo="materiais_lid"><span class="rel-ico">📦</span><b>Materiais por liderança</b><span>Quantidade enviada para cada liderança</span></button>
+          <button class="rel-card" data-tipo="materiais_mun"><span class="rel-ico">📍</span><b>Materiais por município</b><span>Quantidade enviada para cada município</span></button>
+        </div>
+      </div>
+
+      <div class="rel-grupo no-print">
+        <div class="rel-grupo-titulo">Eleições (TSE)</div>
+        <div class="rel-grid">
+          <button class="rel-card" data-tipo="prefeitos"><span class="rel-ico">🏛️</span><b>Prefeitos 2024 por partido</b><span>Todos os prefeitos eleitos, agrupados por partido</span></button>
+          <button class="rel-card" data-tipo="vereadores"><span class="rel-ico">🗳️</span><b>Vereadores eleitos 2024</b><span>Por município, ordenados por votação</span></button>
+          <button class="rel-card" data-tipo="dep_estadual"><span class="rel-ico">📍</span><b>Deputados estaduais 2022</b><span>Mais votados em cada município</span></button>
+          <button class="rel-card" data-tipo="dep_federal"><span class="rel-ico">📍</span><b>Deputados federais 2022</b><span>Mais votados em cada município</span></button>
+        </div>
+      </div>
+
       <div id="rel-cabecalho-print"></div>
-      <div class="painel" style="overflow-x:auto"><div id="rel-saida"><div class="vazio">Escolha um relatório e clique em Gerar.</div></div></div>
+      <div class="painel" style="overflow-x:auto"><div id="rel-saida"><div class="vazio">Escolha um relatório acima para gerar.</div></div></div>
     </section>
 
     <!-- CONFIGURAÇÕES -->
@@ -724,6 +1014,7 @@ table.tab tr.clicavel{cursor:pointer}
       </div>
     </section>
 
+    </div>
   </main>
 </div>
 
@@ -741,12 +1032,12 @@ table.tab tr.clicavel{cursor:pointer}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="dados-pr.js?v=5"></script>
-<script src="js/app.js?v=14"></script>
+<script src="js/app.js?v=17"></script>
 <script src="js/municipios.js?v=13"></script>
-<script src="js/eleitoral.js?v=5"></script>
+<script src="js/eleitoral.js?v=6"></script>
 <script src="js/radar.js?v=3"></script>
 <script src="js/materiais.js?v=2"></script>
-<script src="js/relatorios.js?v=2"></script>
+<script src="js/relatorios.js?v=3"></script>
 <script src="js/candidatos.js?v=12"></script>
 <script src="js/config.js?v=3"></script>
 <script src="js/campanhas.js?v=2"></script>

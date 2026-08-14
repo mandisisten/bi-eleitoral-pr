@@ -10,20 +10,25 @@
     if (inicializado) return;
     inicializado = true;
     selectMesos($("#rel-meso"));
-    $("#btn-gerar-rel").onclick = gerar;
-    $("#btn-rel-csv").onclick = () => {
-      if (!relAtual) return;
-      baixarCSV(relAtual.titulo.replace(/[^\w]+/g, "_").toLowerCase() + ".csv", [relAtual.colunas, ...relAtual.linhas]);
-    };
-    $("#btn-rel-print").onclick = () => {
-      if (!relAtual) return;
-      const c = BI.config;
-      $("#rel-cabecalho-print").innerHTML = `
-        <div style="font-size:18px;font-weight:800">${esc(relAtual.titulo)}</div>
-        <div style="font-size:12px;color:#555">${c.nomeCandidato ? esc(c.nomeCandidato) + (c.partido ? " (" + esc(c.partido) + ")" : "") + " — " + esc(c.cargo || "") + " · " : ""}Gerado em ${new Date().toLocaleString("pt-BR")} — BI Paraná</div><hr>`;
-      window.print();
-    };
+    $$(".rel-card").forEach(btn => btn.onclick = () => gerar(btn.dataset.tipo));
+    $("#rel-meso").onchange = () => { if (relAtual) gerar(relAtual.tipo); };
   }
+
+  function exportarCSV() {
+    if (!relAtual) return;
+    baixarCSV(relAtual.titulo.replace(/[^\w]+/g, "_").toLowerCase() + ".csv", [relAtual.colunas, ...relAtual.linhas]);
+  }
+  window.exportarCSVRelatorio = exportarCSV;
+
+  function imprimirRelatorio() {
+    if (!relAtual) return;
+    const c = BI.config;
+    $("#rel-cabecalho-print").innerHTML = `
+      <div style="font-size:18px;font-weight:800">${esc(relAtual.titulo)}</div>
+      <div style="font-size:12px;color:#555">${c.nomeCandidato ? esc(c.nomeCandidato) + (c.partido ? " (" + esc(c.partido) + ")" : "") + " — " + esc(c.cargo || "") + " · " : ""}Gerado em ${new Date().toLocaleString("pt-BR")} — BI Paraná</div><hr>`;
+    window.print();
+  }
+  window.imprimirRelatorio = imprimirRelatorio;
 
   function filtroMeso() { return $("#rel-meso").value; }
   function munisFiltrados() {
@@ -186,15 +191,17 @@
     return { titulo, colunas: ["Município", "#", "Candidato", "Partido", "Votos no município", "Situação final"], linhas };
   }
 
-  function gerar() {
-    const tipo = $("#rel-tipo").value;
+  function gerar(tipo) {
     relAtual = GERADORES[tipo]();
-    $("#btn-rel-csv").disabled = false;
-    $("#btn-rel-print").disabled = false;
+    relAtual.tipo = tipo;
+    $$(".rel-card").forEach(btn => btn.classList.toggle("ativo", btn.dataset.tipo === tipo));
     $("#rel-saida").innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <h3 style="margin:0">${esc(relAtual.titulo)}</h3>
-        <span style="font-size:12px;color:var(--tx3)">${relAtual.linhas.length} linha(s) — ${new Date().toLocaleString("pt-BR")}</span>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px" class="no-print">
+        <div><h3 style="margin:0">${esc(relAtual.titulo)}</h3><span style="font-size:12px;color:var(--tx3)">${relAtual.linhas.length} linha(s) — ${new Date().toLocaleString("pt-BR")}</span></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn sec mini" onclick="exportarCSVRelatorio()">⬇️ Exportar CSV</button>
+          <button class="btn sec mini" onclick="imprimirRelatorio()">🖨️ Imprimir</button>
+        </div>
       </div>
       ${relAtual.linhas.length ? `<table class="tab"><thead><tr>${relAtual.colunas.map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead>
       <tbody>${relAtual.linhas.map(l => `<tr>${l.map(c => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>`

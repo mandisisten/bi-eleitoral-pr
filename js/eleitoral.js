@@ -344,33 +344,117 @@ window.confirmarExclusaoLideranca = confirmarExclusaoLideranca;
 })();
 
 /* ================== PÁGINA AGENDA ================== */
+const TIPO_EVENTO_INFO = {
+  reuniao: { rotulo: "Reunião", cor: "#3B82F6" },
+  evento: { rotulo: "Evento", cor: "#8B5CF6" },
+  prazo: { rotulo: "Prazo", cor: "#F59E0B" },
+  visita: { rotulo: "Visita", cor: "#22C55E" },
+  outro: { rotulo: "Outro", cor: "#64748B" }
+};
 (() => {
   let inicializado = false;
+  let periodoAtivo = "hoje";
+  let viewAtiva = "lista";
+  let mesCal = new Date();
+
   function init() {
     if (inicializado) return;
     inicializado = true;
     $("#btn-novo-evento").onclick = () => abrirEvento();
+    $$("#agenda-periodo .chip-filtro").forEach(b => b.onclick = () => {
+      periodoAtivo = b.dataset.periodo;
+      $$("#agenda-periodo .chip-filtro").forEach(x => x.classList.toggle("ativo", x === b));
+      renderLista();
+    });
+    $$("#agenda-view-switch button").forEach(b => b.onclick = () => {
+      viewAtiva = b.dataset.view;
+      $$("#agenda-view-switch button").forEach(x => x.classList.toggle("ativo", x === b));
+      $("#agenda-lista").style.display = viewAtiva === "lista" ? "block" : "none";
+      $("#agenda-calendario").style.display = viewAtiva === "calendario" ? "block" : "none";
+      if (viewAtiva === "calendario") renderCalendario();
+    });
   }
+
+  function dentroPeriodo(dataISO) {
+    const hoje = new Date().toISOString().slice(0, 10);
+    if (periodoAtivo === "todos") return true;
+    if (periodoAtivo === "hoje") return dataISO === hoje;
+    if (periodoAtivo === "semana") {
+      const d = new Date(dataISO + "T00:00:00"), h = new Date(hoje + "T00:00:00");
+      const dias = Math.round((d - h) / 86400000);
+      return dias >= 0 && dias <= 7;
+    }
+    if (periodoAtivo === "proximos") return dataISO >= hoje;
+    return true;
+  }
+
+  function renderLista() {
+    const hoje = new Date().toISOString().slice(0, 10);
+    const lista = [...BI.eventos].filter(ev => dentroPeriodo(ev.data)).sort((a, b) => (a.data + (a.hora || "")).localeCompare(b.data + (b.hora || "")));
+    $("#agenda-lista").innerHTML = lista.length ? lista.map(ev => {
+      const mun = MUNI_BY_ID[ev.municipioId];
+      const info = TIPO_EVENTO_INFO[ev.tipo] || TIPO_EVENTO_INFO.outro;
+      const [ano, mes, dia] = ev.data.split("-");
+      const nomeMes = new Date(ev.data + "T00:00:00").toLocaleDateString("pt-BR", { month: "short" }).replace(".", "").toUpperCase();
+      return `<div class="agenda-item clicavel" onclick="abrirEvento('${ev.id}')" style="${ev.data < hoje ? "opacity:.55" : ""}">
+        <div class="agenda-data"><div class="d">${dia}</div><div class="m">${nomeMes}</div></div>
+        <div class="agenda-faixa" style="background:${info.cor}"></div>
+        <div class="agenda-info"><b>${esc(ev.titulo)}</b><span>${ev.hora ? esc(ev.hora) + " · " : ""}${mun ? esc(mun.nome) : "sem município"}${ev.responsavel ? " · " + esc(ev.responsavel) : ""}</span></div>
+        <span class="agenda-tag" style="background:${info.cor}22;color:${info.cor}">${info.rotulo}</span>
+        <button class="btn danger mini" onclick="event.stopPropagation();excluirEvento('${ev.id}')" style="margin-left:6px">✕</button>
+      </div>`;
+    }).join("") : `<div class="vazio">Nenhum compromisso ${periodoAtivo === "todos" ? "agendado" : "neste período"}.</div>`;
+  }
+
+  function renderCalendario() {
+    const ano = mesCal.getFullYear(), mes = mesCal.getMonth();
+    const primeiroDia = new Date(ano, mes, 1);
+    const nomeMesAno = primeiroDia.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+    const offset = primeiroDia.getDay();
+    const totalDias = new Date(ano, mes + 1, 0).getDate();
+    const hoje = new Date().toISOString().slice(0, 10);
+    const porDia = {};
+    BI.eventos.forEach(ev => { (porDia[ev.data] = porDia[ev.data] || []).push(ev); });
+
+    let html = `<div class="cal-mes-nav"><button id="cal-mes-ant">‹</button><b style="text-transform:capitalize">${nomeMesAno}</b><button id="cal-mes-prox">›</button></div>`;
+    html += `<div class="cal-grade">`;
+    ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"].forEach(d => html += `<div class="cal-dia-semana">${d}</div>`);
+    for (let i = 0; i < offset; i++) html += `<div></div>`;
+    for (let d = 1; d <= totalDias; d++) {
+      const iso = `${ano}-${String(mes + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      const evs = porDia[iso] || [];
+      html += `<div class="cal-dia${iso === hoje ? " hoje" : ""}${evs.length ? " tem-evento" : ""}" ${evs.length ? `onclick="filtrarAgendaPorDia('${iso}')" title="${evs.length} compromisso(s)"` : ""}>
+        ${d}${evs.length ? `<div class="pontos">${evs.slice(0, 4).map(ev => `<span style="background:${(TIPO_EVENTO_INFO[ev.tipo] || TIPO_EVENTO_INFO.outro).cor}"></span>`).join("")}</div>` : ""}
+      </div>`;
+    }
+    html += `</div>`;
+    $("#agenda-calendario").innerHTML = html;
+    $("#cal-mes-ant").onclick = () => { mesCal = new Date(ano, mes - 1, 1); renderCalendario(); };
+    $("#cal-mes-prox").onclick = () => { mesCal = new Date(ano, mes + 1, 1); renderCalendario(); };
+  }
+
+  window.filtrarAgendaPorDia = iso => {
+    viewAtiva = "lista"; periodoAtivo = "todos";
+    $$("#agenda-view-switch button").forEach(x => x.classList.toggle("ativo", x.dataset.view === "lista"));
+    $("#agenda-calendario").style.display = "none"; $("#agenda-lista").style.display = "block";
+    const hoje = new Date().toISOString().slice(0, 10);
+    const lista = BI.eventos.filter(ev => ev.data === iso).sort((a, b) => (a.hora || "").localeCompare(b.hora || ""));
+    $("#agenda-lista").innerHTML = `<div style="font-size:12px;color:var(--tx3);margin-bottom:10px">Compromissos em ${esc(formatarData(iso))} — <a href="#" onclick="event.preventDefault();document.querySelector('.chip-filtro[data-periodo=todos]').click()" style="color:var(--pri2)">ver todos</a></div>` +
+      (lista.length ? lista.map(ev => {
+        const mun = MUNI_BY_ID[ev.municipioId];
+        const info = TIPO_EVENTO_INFO[ev.tipo] || TIPO_EVENTO_INFO.outro;
+        return `<div class="agenda-item clicavel" onclick="abrirEvento('${ev.id}')">
+          <div class="agenda-faixa" style="background:${info.cor}"></div>
+          <div class="agenda-info"><b>${esc(ev.titulo)}</b><span>${ev.hora ? esc(ev.hora) + " · " : ""}${mun ? esc(mun.nome) : "sem município"}</span></div>
+          <span class="agenda-tag" style="background:${info.cor}22;color:${info.cor}">${info.rotulo}</span>
+        </div>`;
+      }).join("") : '<div class="vazio">Nenhum compromisso neste dia.</div>');
+  };
 
   function render() {
     init();
-    const hoje = new Date().toISOString().slice(0, 10);
-    const lista = [...BI.eventos];
-    $("#agenda-tabela").innerHTML = lista.length ? `
-      <table class="tab"><thead><tr><th>Data</th><th>Hora</th><th>Compromisso</th><th>Município</th><th>Responsável</th><th></th></tr></thead><tbody>
-      ${lista.map(ev => {
-        const mun = MUNI_BY_ID[ev.municipioId];
-        const passado = ev.data < hoje;
-        return `<tr class="clicavel" style="${passado ? "opacity:.5" : ""}" onclick="abrirEvento('${ev.id}')">
-          <td><b>${esc(formatarData(ev.data))}</b>${ev.data === hoje ? ' <span class="tag verde">hoje</span>' : ""}</td>
-          <td>${esc(ev.hora || "—")}</td>
-          <td><b>${esc(ev.titulo)}</b>${ev.descricao ? `<br><span style="font-size:11.5px;color:var(--tx3)">${esc(ev.descricao)}</span>` : ""}</td>
-          <td>${mun ? esc(mun.nome) : "—"}</td>
-          <td style="color:var(--tx2)">${esc(ev.responsavel || "—")}</td>
-          <td><button class="btn danger mini" onclick="event.stopPropagation();excluirEvento('${ev.id}')">✕</button></td>
-        </tr>`;
-      }).join("")}
-      </tbody></table>` : '<div class="vazio">Nenhum compromisso agendado.</div>';
+    renderLista();
+    if (viewAtiva === "calendario") renderCalendario();
   }
 
   PAGES.agenda = { render };
@@ -384,6 +468,10 @@ function abrirEvento(id) {
       <div><label>Data *</label><input id="f-ev-data" type="date" value="${ev?.data || ""}"></div>
       <div><label>Hora</label><input id="f-ev-hora" type="time" value="${ev?.hora || ""}"></div>
       <div class="span2"><label>Título *</label><input id="f-ev-titulo" value="${esc(ev?.titulo || "")}" placeholder="ex.: Reunião com lideranças"></div>
+      <div>
+        <label>Tipo</label>
+        <select id="f-ev-tipo">${Object.entries(TIPO_EVENTO_INFO).map(([k, v]) => `<option value="${k}" ${ev?.tipo === k ? "selected" : ""}>${esc(v.rotulo)}</option>`).join("")}</select>
+      </div>
       <div><label>Município</label><select id="f-ev-municipio"></select></div>
       <div><label>Responsável</label><input id="f-ev-resp" value="${esc(ev?.responsavel || "")}"></div>
       <div class="span2"><label>Descrição</label><textarea id="f-ev-desc" rows="2">${esc(ev?.descricao || "")}</textarea></div>
@@ -403,6 +491,7 @@ async function salvarEvento(id) {
     data: $("#f-ev-data").value,
     hora: $("#f-ev-hora").value,
     titulo: $("#f-ev-titulo").value.trim(),
+    tipo: $("#f-ev-tipo").value,
     municipioId: Number($("#f-ev-municipio").value) || null,
     responsavel: $("#f-ev-resp").value.trim(),
     descricao: $("#f-ev-desc").value.trim()

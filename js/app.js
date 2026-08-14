@@ -283,6 +283,9 @@ function iniciarApp() {
   $("#tela-login").style.display = "none";
   $("#app").style.display = "block";
   $("#user-nome").textContent = BI.perfil.username;
+  const inicial = (BI.perfil.username || "?").charAt(0).toUpperCase();
+  $("#user-avatar").textContent = inicial;
+  $("#topbar-avatar").textContent = inicial;
   $("#nav-campanhas").style.display = ehMaster() ? "flex" : "none";
 
   if (precisaMigrar()) { mostrarTelaMigracao(); return; }
@@ -466,8 +469,10 @@ function atualizarCabecalho() {
     $("#logo-sub").textContent = (c.nomeCandidato + " • " + (c.partido || "")).toUpperCase();
     $("#dash-sub").textContent = `Campanha de ${c.nomeCandidato}${c.partido ? " (" + c.partido + ")" : ""} para ${c.cargo || "Deputado"} — dados IBGE/TSE`;
     $("#badge-campanha-nome").textContent = c.nomeCandidato;
+    $("#topbar-campanha").textContent = c.nomeCandidato;
   } else {
     $("#badge-campanha-nome").textContent = "(sem nome)";
+    $("#topbar-campanha").textContent = "(sem nome)";
   }
 }
 
@@ -486,6 +491,60 @@ function fecharMenuMobile() { $("#sidebar").classList.remove("aberta"); $("#side
 $("#btn-menu-mobile").onclick = abrirMenuMobile;
 $("#sidebar-backdrop").onclick = fecharMenuMobile;
 $$(".mh-modulo").forEach(b => b.onclick = () => mostrarPagina(b.dataset.pagina));
+
+$("#btn-recolher").onclick = () => $("#app").classList.toggle("recolhida");
+
+/* ---------- Busca global (municípios + lideranças) ---------- */
+(() => {
+  const input = $("#topbar-busca-input");
+  const painel = $("#topbar-busca-resultados");
+  if (!input) return;
+  function abrirResultados(q) {
+    const termo = q.trim().toLowerCase();
+    if (termo.length < 2) { painel.classList.remove("aberto"); return; }
+    const munis = MUNI.filter(m => m.nome.toLowerCase().includes(termo)).slice(0, 5);
+    const lids = BI.liderancas.filter(l => (l.nome || "").toLowerCase().includes(termo)).slice(0, 5);
+    let html = "";
+    if (munis.length) html += `<div class="busca-grupo-titulo">Municípios</div>` + munis.map(m =>
+      `<div class="busca-item" onclick="mostrarPagina('municipios');setTimeout(()=>abrirMunicipio(${m.id}),80);fecharBuscaGlobal()"><b>${esc(m.nome)}</b><span>${esc(m.meso)}</span></div>`).join("");
+    if (lids.length) html += `<div class="busca-grupo-titulo">Lideranças</div>` + lids.map(l =>
+      `<div class="busca-item" onclick="mostrarPagina('liderancas');setTimeout(()=>editarLideranca('${l.id}'),80);fecharBuscaGlobal()"><b>${esc(l.nome)}</b><span>${esc(MUNI_BY_ID[l.municipioId]?.nome || "")}</span></div>`).join("");
+    painel.innerHTML = html || `<div class="busca-vazio">Nenhum resultado para "${esc(q)}"</div>`;
+    painel.classList.add("aberto");
+  }
+  input.addEventListener("input", e => abrirResultados(e.target.value));
+  input.addEventListener("focus", e => { if (e.target.value) abrirResultados(e.target.value); });
+  document.addEventListener("click", e => { if (!e.target.closest("#topbar-busca-wrap")) painel.classList.remove("aberto"); });
+  window.fecharBuscaGlobal = () => { painel.classList.remove("aberto"); input.value = ""; };
+})();
+
+/* ---------- Central de notificações ---------- */
+(() => {
+  const btn = $("#topbar-notif-btn");
+  const dot = $("#topbar-notif-dot");
+  const painel = $("#topbar-notif-painel");
+  if (!btn) return;
+  btn.onclick = e => {
+    e.stopPropagation();
+    const atividades = obterAtividadesRecentes().slice(0, 10);
+    painel.innerHTML = `<div class="topbar-notif-titulo">Notificações recentes</div>` +
+      (atividades.length ? atividades.map(a => `
+        <div class="notif-item"><span class="notif-ico">${ICONES_ATIV[a.tipo]}</span>
+          <span class="notif-texto">${a.texto}</span>
+          <span class="notif-data">${a.data.toLocaleDateString("pt-BR")}</span></div>`).join("")
+        : `<div class="busca-vazio">Nenhuma atividade registrada ainda.</div>`);
+    painel.classList.toggle("aberto");
+    dot.style.display = "none";
+  };
+  document.addEventListener("click", e => { if (!e.target.closest(".topbar-notif-wrap")) painel.classList.remove("aberto"); });
+  window.atualizarSinoNotificacoes = () => {
+    const atividades = obterAtividadesRecentes();
+    const recente = atividades[0];
+    if (!recente) { dot.style.display = "none"; return; }
+    const horas = (Date.now() - recente.data.getTime()) / 36e5;
+    dot.style.display = horas < 24 ? "block" : "none";
+  };
+})();
 
 /* ---------- Tabelas -> cartões no celular ----------
    Em telas estreitas, table.tab vira uma lista de cartões (CSS faz a virada,
@@ -510,6 +569,7 @@ rotularTabelasMobile();
 
 function aoMudarDados() {
   if (PAGES[BI.paginaAtual] && PAGES[BI.paginaAtual].render) PAGES[BI.paginaAtual].render();
+  if (window.atualizarSinoNotificacoes) window.atualizarSinoNotificacoes();
 }
 window.aoMudarDados = aoMudarDados;
 
@@ -541,6 +601,22 @@ function tsParaData(ts) {
   return (ts && typeof ts.toDate === "function") ? ts.toDate() : new Date();
 }
 
+const ICONES_ATIV = { lideranca: "🤝", material: "📦" };
+function obterAtividadesRecentes() {
+  const atividades = [];
+  BI.liderancas.forEach(l => atividades.push({
+    tipo: "lideranca", data: tsParaData(l.atualizadoEm || l.criadoEm),
+    texto: `Liderança <b>${esc(l.nome)}</b> cadastrada em ${esc(MUNI_BY_ID[l.municipioId]?.nome || "?")}`
+  }));
+  BI.remessas.forEach(r => atividades.push({
+    tipo: "material", data: tsParaData(r.criadoEm),
+    texto: `Envio de <b>${fmtN(r.qtd)} ${esc(r.materialNome)}</b> para ${esc(MUNI_BY_ID[r.municipioId]?.nome || "?")}`
+  }));
+  atividades.sort((a, b) => b.data - a.data);
+  return atividades;
+}
+window.obterAtividadesRecentes = obterAtividadesRecentes;
+
 function renderHomeMobile(totalExp, munComLid) {
   $("#mh-nome").textContent = BI.perfil.username;
   $("#mh-papel").textContent = ehAdmin() ? "Administrador" : "Coordenador";
@@ -550,17 +626,7 @@ function renderHomeMobile(totalExp, munComLid) {
     <div class="mh-kpi"><div class="v">${BI.liderancas.length}</div><div class="r">Lideranças</div></div>
     <div class="mh-kpi"><div class="v">${munComLid}</div><div class="r">Municípios cobertos</div></div>`;
 
-  const ICONES_ATIV = { lideranca: "🤝", material: "📦" };
-  const atividades = [];
-  BI.liderancas.forEach(l => atividades.push({
-    tipo: "lideranca", data: tsParaData(l.atualizadoEm || l.criadoEm),
-    texto: `Liderança <b>${esc(l.nome)}</b> em ${esc(MUNI_BY_ID[l.municipioId]?.nome || "?")}`
-  }));
-  BI.remessas.forEach(r => atividades.push({
-    tipo: "material", data: tsParaData(r.criadoEm),
-    texto: `Envio de <b>${fmtN(r.qtd)} ${esc(r.materialNome)}</b> para ${esc(MUNI_BY_ID[r.municipioId]?.nome || "?")}`
-  }));
-  atividades.sort((a, b) => b.data - a.data);
+  const atividades = obterAtividadesRecentes();
 
   $("#mh-atividade").innerHTML = atividades.length ? atividades.slice(0, 8).map(a => `
     <div class="mh-atividade-item">
@@ -570,6 +636,7 @@ function renderHomeMobile(totalExp, munComLid) {
     </div>`).join("") : '<div class="vazio">Nenhuma atividade ainda.</div>';
 }
 
+let dashSortState = { campo: "expectativa", asc: false };
 PAGES.dashboard = {
   render() {
     const exp = expectativaPorMunicipio();
@@ -596,14 +663,78 @@ PAGES.dashboard = {
       <div class="card-kpi"><div class="rotulo">PIB do Paraná</div><div class="valor">${fmtMilR(pibTotal)}</div><div class="extra">IBGE 2021</div></div>
       <div class="card-kpi"><div class="rotulo">Materiais enviados</div><div class="valor">${fmtN(enviados)}</div><div class="extra">${BI.remessas.length} envios</div></div>`;
 
-    // top expectativa
-    const top = MUNI.map(m => ({ nome: m.nome, v: exp[m.id] || 0 })).filter(x => x.v > 0)
-      .sort((a, b) => b.v - a.v).slice(0, 12);
-    novoChart("chart-top-exp", {
-      type: "bar",
-      data: { labels: top.map(t => t.nome), datasets: [{ data: top.map(t => t.v), backgroundColor: "#3b82f6", borderRadius: 4 }] },
-      options: { maintainAspectRatio: false, indexAxis: "y", plugins: { legend: { display: false } }, scales: { x: { grid: { color: "#1e2740" } }, y: { grid: { display: false } } } }
-    });
+    // ---- Resumo territorial ----
+    const eleitoradoComLid = MUNI.reduce((a, m) => a + (lidPorMun[m.id] ? (m.eleitorado2024 || 0) : 0), 0);
+    $("#dash-resumo").innerHTML = `
+      <div class="mini-stat-grid">
+        <div class="mini-stat"><div class="r">Municípios ativos</div><div class="v">${munComLid}</div></div>
+        <div class="mini-stat"><div class="r">Sem liderança</div><div class="v" style="color:var(--warn)">${399 - munComLid}</div></div>
+        <div class="mini-stat"><div class="r">Expectativa total</div><div class="v">${fmtN(totalExp)}</div></div>
+        <div class="mini-stat"><div class="r">Eleitorado coberto</div><div class="v">${fmtN(eleitoradoComLid)}</div></div>
+      </div>`;
+
+    // ---- Alertas (só com dados reais) ----
+    const semLid = MUNI.filter(m => !lidPorMun[m.id]).sort((a, b) => (b.eleitorado2024 || 0) - (a.eleitorado2024 || 0));
+    const pendentes = BI.liderancas.filter(l => l.status === "em_conversa" || l.status === "indecisa").length;
+    const alertas = [];
+    if (semLid.length) alertas.push({ cor: "#F59E0B", ico: "⚠️", html: `<b>${semLid.length} município(s)</b> ainda sem liderança cadastrada` });
+    if (semLid.length) alertas.push({ cor: "#3B82F6", ico: "🎯", html: `<b>${esc(semLid[0].nome)}</b> é o maior município sem liderança (${fmtN(semLid[0].eleitorado2024)} eleitores)` });
+    if (pendentes) alertas.push({ cor: "#8B5CF6", ico: "🤝", html: `<b>${pendentes} liderança(s)</b> aguardando confirmação` });
+    $("#dash-alertas").innerHTML = alertas.length ? alertas.map(a => `
+      <div class="alerta-item"><span class="aico" style="background:${a.cor}22;color:${a.cor}">${a.ico}</span><span>${a.html}</span></div>
+    `).join("") : '<div class="vazio">Nenhum alerta no momento.</div>';
+
+    // ---- Principais municípios (tabela ordenável e pesquisável) ----
+    const linhasTop = MUNI.map(m => ({
+      id: m.id, nome: m.nome, eleitorado: m.eleitorado2024 || 0, expectativa: exp[m.id] || 0,
+      meta: (BI.metas[m.id] && BI.metas[m.id].metaVotos) || 0, lideranca: lidPorMun[m.id] || 0
+    }));
+    const renderDashTop = (filtro) => {
+      let lista = linhasTop.filter(l => !filtro || l.nome.toLowerCase().includes(filtro.toLowerCase()));
+      lista.sort((a, b) => {
+        const va = a[dashSortState.campo], vb = b[dashSortState.campo];
+        const c = typeof va === "string" ? va.localeCompare(vb) : va - vb;
+        return dashSortState.asc ? c : -c;
+      });
+      lista = lista.slice(0, 30);
+      const th = (rotulo, campo, num) => `<th class="${num ? "num" : ""}" data-campo="${campo}">${rotulo}${dashSortState.campo === campo ? (dashSortState.asc ? " ▲" : " ▼") : ""}</th>`;
+      $("#dash-top-tabela").innerHTML = `<table class="tab"><thead><tr>
+          ${th("Município", "nome")}${th("Eleitorado", "eleitorado", 1)}${th("Expectativa", "expectativa", 1)}${th("Meta", "meta", 1)}${th("Lideranças", "lideranca", 1)}<th>Status</th>
+        </tr></thead><tbody>
+        ${lista.map(l => {
+          const status = l.lideranca ? (l.meta && l.expectativa >= l.meta ? ["Meta atingida", "verde"] : ["Em progresso", "azul"]) : ["Sem liderança", "amarelo"];
+          return `<tr class="clicavel" onclick="abrirMunicipio(${l.id})">
+            <td><b>${esc(l.nome)}</b></td>
+            <td class="num">${fmtN(l.eleitorado)}</td>
+            <td class="num"><b>${fmtN(l.expectativa)}</b></td>
+            <td class="num">${l.meta ? fmtN(l.meta) : "—"}</td>
+            <td class="num">${l.lideranca}</td>
+            <td><span class="tag ${status[1]}">${status[0]}</span></td>
+          </tr>`;
+        }).join("") || '<tr><td colspan="6" class="vazio">Nenhum município encontrado.</td></tr>'}
+        </tbody></table>`;
+      $$("#dash-top-tabela th[data-campo]").forEach(el => el.onclick = () => {
+        const campo = el.dataset.campo;
+        if (dashSortState.campo === campo) dashSortState.asc = !dashSortState.asc;
+        else dashSortState = { campo, asc: false };
+        renderDashTop($("#dash-top-busca").value);
+      });
+    };
+    renderDashTop("");
+    $("#dash-top-busca").oninput = e => renderDashTop(e.target.value);
+
+    // ---- Radar de oportunidades (eleitorado alto + sem liderança) ----
+    const oportunidades = semLid.slice(0, 18);
+    const oportGrupo = (lista, titulo, classe) => `
+      <div class="opor-col ${classe}"><div class="opor-col-titulo">${titulo} (${lista.length})</div>
+        ${lista.map(m => `<div class="opor-card" onclick="abrirMunicipio(${m.id})"><div class="nm">${esc(m.nome)}</div>
+          <div class="meta"><span>Eleitorado <b>${fmtN(m.eleitorado2024)}</b></span><span>${esc(m.meso.replace(" Paranaense", ""))}</span></div></div>`).join("") || '<div class="vazio" style="padding:12px 0">Nenhum município nesta faixa.</div>'}
+      </div>`;
+    $("#dash-oportunidades").innerHTML = `<div class="opor-grid">
+      ${oportGrupo(oportunidades.slice(0, 6), "Alta oportunidade", "alta")}
+      ${oportGrupo(oportunidades.slice(6, 12), "Média oportunidade", "media")}
+      ${oportGrupo(oportunidades.slice(12, 18), "Baixa oportunidade", "baixa")}
+    </div>`;
 
     // partidos dos prefeitos 2024
     const cont = {};
@@ -625,14 +756,6 @@ PAGES.dashboard = {
       data: { labels: mesoOrd.map(x => x[0].replace(" Paranaense", "")), datasets: [{ data: mesoOrd.map(x => x[1]), backgroundColor: "#10b981", borderRadius: 4 }] },
       options: { maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { font: { size: 10 } }, grid: { display: false } }, y: { grid: { color: "#1e2740" } } } }
     });
-
-    // cobertura
-    const semLid = MUNI.filter(m => !lidPorMun[m.id]).sort((a, b) => (b.eleitorado2024 || 0) - (a.eleitorado2024 || 0)).slice(0, 8);
-    $("#dash-cobertura").innerHTML = `
-      <div style="font-size:12.5px;color:var(--tx2);margin-bottom:10px">Maiores municípios <b style="color:var(--warn)">ainda sem liderança</b> (por eleitorado):</div>
-      ${semLid.map(m => `<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #1e2740;font-size:13px">
-        <span style="cursor:pointer;color:var(--pri2)" onclick="abrirMunicipio(${m.id})">${esc(m.nome)}</span>
-        <span style="color:var(--tx2)">${fmtN(m.eleitorado2024)} eleitores</span></div>`).join("") || '<div class="vazio">Todos os municípios têm liderança! 🎉</div>'}`;
 
     renderMapa();
   }
