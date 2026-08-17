@@ -6,7 +6,7 @@
 (() => {
   let inicializado = false;
   let mapasRenderizados = false;
-  let rankAtivo = "eleitorado";
+  let rankAtivo = "potencial";
   const miniMapas = {};
 
   function init() {
@@ -96,10 +96,10 @@
       '<span>cor = partido — passe o mouse pra ver qual</span>',
       m => { const p = m.prefeitos && m.prefeitos["2024"]; return p ? esc(p.nomeUrna) + " (" + esc(p.partido) + ")" : "sem dados"; });
 
-    const corDensidade = corPorQuantil(MUNI.map(m => m.densidade || 0), ["#1e2740", "#4c1d95", "#6d28d9", "#7c3aed", "#a78bfa", "#ddd6fe"]);
-    await criarMiniMapa(geo, "densidade", "Densidade demográfica", m => corDensidade(m.densidade || 0),
-      '<span>baixa</span><div class="ramp" style="background:linear-gradient(90deg,#1e2740,#ddd6fe)"></div><span>alta</span>',
-      m => (m.densidade ? m.densidade.toLocaleString("pt-BR") : "—") + " hab/km²");
+    const corLideranca = corPorQuantil(MUNI.map(m => lidPorMun[m.id] || 0), ["#1e2740", "#4c1d95", "#6d28d9", "#7c3aed", "#a78bfa", "#ddd6fe"]);
+    await criarMiniMapa(geo, "liderancas", "Lideranças por município", m => corLideranca(lidPorMun[m.id] || 0),
+      '<span>poucas</span><div class="ramp" style="background:linear-gradient(90deg,#1e2740,#ddd6fe)"></div><span>muitas</span>',
+      m => (lidPorMun[m.id] || 0) + " liderança(s)");
 
     const corSaude = corPorQuantil(MUNI.map(m => (m.saude && m.saude.estabelecimentos) || 0), ["#1e2740", "#0e7490", "#0891b2", "#06b6d4", "#22d3ee", "#a5f3fc"]);
     await criarMiniMapa(geo, "saude", "Estabelecimentos de saúde (CNES)", m => corSaude((m.saude && m.saude.estabelecimentos) || 0),
@@ -109,6 +109,36 @@
     await criarMiniMapa(geo, "emprego", "Saldo de emprego (CAGED, mês)", m => corSaldoEmprego(m.emprego && m.emprego.saldo),
       '<span style="color:#fca5a5">saldo negativo</span><span style="margin-left:auto;color:#86efac">saldo positivo</span>',
       m => m.emprego ? ((m.emprego.saldo >= 0 ? "+" : "") + fmtN(m.emprego.saldo) + " vagas") : "sem dados");
+  }
+
+  /* ---------- Rede de lideranças (status + função) ---------- */
+  const COR_STATUS_LID = { confirmada: "#22c55e", em_conversa: "#f59e0b", indecisa: "#64748b", perdida: "#ef4444" };
+  const ROTULO_STATUS_LID = { confirmada: "Confirmada", em_conversa: "Em conversa", indecisa: "Indecisa", perdida: "Perdida" };
+  function renderRedeLiderancas() {
+    const porStatus = { confirmada: 0, em_conversa: 0, indecisa: 0, perdida: 0 };
+    BI.liderancas.forEach(l => { if (porStatus[l.status] != null) porStatus[l.status]++; else porStatus.indecisa++; });
+    const statusChaves = Object.keys(porStatus).filter(k => porStatus[k] > 0);
+    novoChart("chart-info-lid-status", {
+      type: "doughnut",
+      data: {
+        labels: statusChaves.map(k => ROTULO_STATUS_LID[k]),
+        datasets: [{ data: statusChaves.map(k => porStatus[k]), backgroundColor: statusChaves.map(k => COR_STATUS_LID[k]), borderWidth: 0 }]
+      },
+      options: { maintainAspectRatio: false, plugins: { legend: { position: "right", labels: { boxWidth: 12, font: { size: 11 } } } } }
+    });
+
+    const porFuncao = {};
+    BI.liderancas.forEach(l => { const f = l.funcao || "Sem função definida"; porFuncao[f] = (porFuncao[f] || 0) + 1; });
+    const funcoesOrd = Object.entries(porFuncao).sort((a, b) => b[1] - a[1]).slice(0, 10);
+    novoChart("chart-info-lid-funcao", {
+      type: "bar",
+      data: { labels: funcoesOrd.map(x => x[0]), datasets: [{ data: funcoesOrd.map(x => x[1]), backgroundColor: "#8b5cf6", borderRadius: 4 }] },
+      options: {
+        maintainAspectRatio: false, indexAxis: "y",
+        plugins: { legend: { display: false } },
+        scales: { x: { grid: { color: "#1e2740" }, ticks: { precision: 0 } }, y: { grid: { display: false }, ticks: { font: { size: 10.5 } } } }
+      }
+    });
   }
 
   /* ---------- Histórico de partidos nas prefeituras ---------- */
@@ -166,13 +196,23 @@
 
   /* ---------- Rankings ---------- */
   const RANKING_CONFIG = {
+    potencial: { campo: "_potencial", cor: "#8b5cf6", formatar: fmtN },
     eleitorado: { campo: "eleitorado2024", cor: "#22c55e", formatar: fmtN },
     pib: { campo: "pibPerCapita", cor: "#f59e0b", formatar: fmtR },
     pop: { campo: "pop2024", cor: "#3b82f6", formatar: fmtN }
   };
   function renderRanking() {
     const cfg = RANKING_CONFIG[rankAtivo];
-    const top = [...MUNI].sort((a, b) => (b[cfg.campo] || 0) - (a[cfg.campo] || 0)).slice(0, 15);
+    let base = MUNI;
+    if (cfg.campo === "_potencial") {
+      const potPorMun = {};
+      BI.liderancas.forEach(l => { potPorMun[l.municipioId] = (potPorMun[l.municipioId] || 0) + expectativaLideranca(l); });
+      base = MUNI.filter(m => potPorMun[m.id] > 0).map(m => ({ ...m, _potencial: potPorMun[m.id] }));
+    }
+    const top = [...base].sort((a, b) => (b[cfg.campo] || 0) - (a[cfg.campo] || 0)).slice(0, 15);
+    $("#info-ranking-vazio").style.display = top.length ? "none" : "block";
+    $("#chart-info-ranking").closest(".chart-box").style.display = top.length ? "block" : "none";
+    if (!top.length) return;
     novoChart("chart-info-ranking", {
       type: "bar",
       data: { labels: top.map(m => m.nome), datasets: [{ data: top.map(m => m[cfg.campo] || 0), backgroundColor: cfg.cor, borderRadius: 4 }] },
@@ -187,6 +227,7 @@
   function render() {
     init();
     renderMapas();
+    renderRedeLiderancas();
     renderHistoricoPartidos();
     renderBolhas();
     renderRanking();

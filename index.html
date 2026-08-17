@@ -1038,6 +1038,15 @@ table.tab tr.clicavel{cursor:pointer}
         <div class="info-mapa-grid" id="info-mapa-grid"></div>
       </div>
 
+      <div class="painel">
+        <h3 style="margin-bottom:2px">Rede de lideranças</h3>
+        <div style="font-size:11.5px;color:var(--tx3);margin-bottom:14px">Como está a cobertura de campo hoje — dados da sua própria operação, não do TSE/IBGE.</div>
+        <div class="grid-2">
+          <div><h3 style="font-size:13px">Por status</h3><div class="chart-box baixo"><canvas id="chart-info-lid-status"></canvas></div></div>
+          <div><h3 style="font-size:13px">Por função / segmento</h3><div class="chart-box baixo"><canvas id="chart-info-lid-funcao"></canvas></div></div>
+        </div>
+      </div>
+
       <div class="grid-2">
         <div class="painel"><h3>Prefeituras por partido — 2016 → 2020 → 2024</h3><div class="chart-box"><canvas id="chart-info-historico"></canvas></div></div>
         <div class="painel"><h3>Perfil territorial (população × PIB per capita)</h3><div class="chart-box"><canvas id="chart-info-bolhas"></canvas></div></div>
@@ -1046,10 +1055,12 @@ table.tab tr.clicavel{cursor:pointer}
       <div class="painel">
         <h3>Rankings</h3>
         <div class="info-ranking-abas">
-          <button class="chip-filtro ativo" data-rank="eleitorado">Eleitorado</button>
+          <button class="chip-filtro ativo" data-rank="potencial">Potencial das lideranças</button>
+          <button class="chip-filtro" data-rank="eleitorado">Eleitorado</button>
           <button class="chip-filtro" data-rank="pib">PIB per capita</button>
           <button class="chip-filtro" data-rank="pop">População</button>
         </div>
+        <div id="info-ranking-vazio" style="display:none" class="vazio">Nenhuma liderança com potencial de votos cadastrado ainda.</div>
         <div class="chart-box" style="height:400px"><canvas id="chart-info-ranking"></canvas></div>
       </div>
     </section>
@@ -1109,6 +1120,6 @@ table.tab tr.clicavel{cursor:pointer}
 <script src="js/candidatos.js?v=13"></script>
 <script src="js/config.js?v=3"></script>
 <script src="js/campanhas.js?v=2"></script>
-<script src="js/infograficos.js?v=1"></script>
+<script src="js/infograficos.js?v=2"></script>
 </body>
 </html>
