@@ -653,13 +653,17 @@ table.tab tr.clicavel{cursor:pointer}
           </div>
         </div>
 
-        <div class="painel">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
-            <h3 style="margin:0">Principais municípios<div style="font-size:11px;color:var(--tx3);font-weight:400;margin-top:2px">ordenado por expectativa de votos · clique numa coluna pra ordenar</div></h3>
+        <details class="secao-colapsavel" open>
+          <summary>
+            <span>Principais municípios <span style="font-size:11px;color:var(--tx3);font-weight:400">— ordenado por expectativa de votos</span></span>
+            <span class="toggle-txt"><span class="toggle-fechado">Ver lista</span><span class="toggle-aberto">Ocultar</span> <span class="seta">▾</span></span>
+          </summary>
+          <div class="secao-corpo painel" style="margin-top:10px">
+            <div class="toolbar" style="margin-bottom:10px"><div class="campo grande"><input id="dash-top-busca" placeholder="Buscar município..."></div></div>
+            <div style="font-size:11px;color:var(--tx3);margin-bottom:8px">clique numa coluna pra ordenar</div>
+            <div id="dash-top-tabela" style="overflow-x:auto"></div>
           </div>
-          <div class="toolbar" style="margin-bottom:10px"><div class="campo grande"><input id="dash-top-busca" placeholder="Buscar município..."></div></div>
-          <div id="dash-top-tabela" style="overflow-x:auto"></div>
-        </div>
+        </details>
 
         <div class="painel">
           <h3>🎯 Radar de oportunidades</h3>
