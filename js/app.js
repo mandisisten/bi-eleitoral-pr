@@ -494,6 +494,33 @@ $$(".mh-modulo").forEach(b => b.onclick = () => mostrarPagina(b.dataset.pagina))
 
 $("#btn-recolher").onclick = () => $("#app").classList.toggle("recolhida");
 
+/* ---------- Expandir mapa em tela cheia ---------- */
+let mapaExpandidoId = null;
+function toggleExpandirMapa(id) {
+  if (mapaExpandidoId === id) { fecharMapaExpandido(); return; }
+  if (mapaExpandidoId) fecharMapaExpandido();
+  mapaExpandidoId = id;
+  $("#" + id).classList.add("mapa-expandido");
+  $("#mapa-backdrop").classList.add("aberto");
+  $("#btn-fechar-mapa-exp").classList.add("aberto");
+  document.body.style.overflow = "hidden";
+  setTimeout(() => window.dispatchEvent(new Event("resize")), 200);
+}
+window.toggleExpandirMapa = toggleExpandirMapa;
+
+function fecharMapaExpandido() {
+  if (!mapaExpandidoId) return;
+  $("#" + mapaExpandidoId).classList.remove("mapa-expandido");
+  $("#mapa-backdrop").classList.remove("aberto");
+  $("#btn-fechar-mapa-exp").classList.remove("aberto");
+  document.body.style.overflow = "";
+  mapaExpandidoId = null;
+  setTimeout(() => window.dispatchEvent(new Event("resize")), 200);
+}
+window.fecharMapaExpandido = fecharMapaExpandido;
+
+document.addEventListener("keydown", e => { if (e.key === "Escape" && mapaExpandidoId) fecharMapaExpandido(); });
+
 /* ---------- Busca global (municípios + lideranças) ---------- */
 (() => {
   const input = $("#topbar-busca-input");

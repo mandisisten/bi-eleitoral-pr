@@ -231,11 +231,20 @@ table.tab tr.clicavel{cursor:pointer}
 .cal-mes-nav button{background:var(--bg2);border:1px solid var(--border);color:var(--tx2);width:30px;height:30px;border-radius:8px;cursor:pointer}
 
 /* mapa */
-#mapa,#mapa-cand{height:520px;border-radius:10px;background:var(--bg2)}
+#mapa,#mapa-cand{height:520px;border-radius:10px;background:var(--bg2);transition:none}
 #mapa{height:420px}
 .leaflet-container{background:var(--bg2)!important;font:inherit}
 .mapa-legenda{background:var(--card);padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:11px;color:var(--tx);line-height:1.7}
 .mapa-legenda i{display:inline-block;width:14px;height:11px;margin-right:5px;border-radius:2px;vertical-align:-1px}
+
+.mapa-wrap{position:relative}
+.btn-expandir-mapa{width:34px;height:34px;flex-shrink:0;border-radius:8px;background:var(--card2);border:1px solid var(--border);color:var(--tx2);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.btn-expandir-mapa:hover{color:var(--tx);border-color:#334066}
+#mapa-backdrop{display:none;position:fixed;inset:0;background:#000c;z-index:1400}
+#mapa-backdrop.aberto{display:block}
+.mapa-expandido{position:fixed!important;top:20px!important;left:20px!important;right:20px!important;bottom:20px!important;width:auto!important;height:auto!important;z-index:1500;box-shadow:0 24px 70px #000d}
+.btn-fechar-mapa-exp{display:none;position:fixed;top:32px;right:32px;z-index:1501;width:38px;height:38px;border-radius:50%;background:var(--card);border:1px solid var(--border);color:var(--tx);font-size:18px;cursor:pointer;align-items:center;justify-content:center;box-shadow:0 6px 18px #0009}
+.btn-fechar-mapa-exp.aberto{display:flex}
 
 /* modal */
 #modal-fundo{position:fixed;inset:0;background:#000a;backdrop-filter:blur(3px);z-index:2000;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:40px 16px}
@@ -384,6 +393,8 @@ table.tab tr.clicavel{cursor:pointer}
   .agenda-toolbar{flex-direction:column;align-items:stretch}
   .cal-dia{font-size:9.5px;padding:4px}
   .cal-dia .d{display:block}
+  .mapa-expandido{top:8px!important;left:8px!important;right:8px!important;bottom:8px!important}
+  .btn-fechar-mapa-exp{top:16px;right:16px}
 
   .cards{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:9px}
   .det-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
@@ -618,20 +629,23 @@ table.tab tr.clicavel{cursor:pointer}
           <div class="painel">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px">
               <div><h3 style="margin:0">Mapa estratégico do Paraná</h3><div style="font-size:11px;color:var(--tx3);margin-top:2px">399 municípios · clique para abrir a ficha</div></div>
-              <select id="mapa-metrica" style="width:auto">
-                <option value="expectativa">Expectativa de votos</option>
-                <option value="cobertura">Cobertura de lideranças</option>
-                <option value="lid_prefeitos">Liderança — Prefeitos</option>
-                <option value="lid_vices">Liderança — Vice-prefeitos</option>
-                <option value="lid_vereadores">Liderança — Vereadores</option>
-                <option value="lid_cargo_eletivo">Liderança — qualquer cargo eletivo</option>
-                <option value="eleitorado">Eleitorado (TSE 2024)</option>
-                <option value="pop">População (IBGE 2024)</option>
-                <option value="pib">PIB per capita</option>
-                <option value="partido">Partido do prefeito</option>
-              </select>
+              <div style="display:flex;gap:8px;align-items:center">
+                <select id="mapa-metrica" style="width:auto">
+                  <option value="expectativa">Expectativa de votos</option>
+                  <option value="cobertura">Cobertura de lideranças</option>
+                  <option value="lid_prefeitos">Liderança — Prefeitos</option>
+                  <option value="lid_vices">Liderança — Vice-prefeitos</option>
+                  <option value="lid_vereadores">Liderança — Vereadores</option>
+                  <option value="lid_cargo_eletivo">Liderança — qualquer cargo eletivo</option>
+                  <option value="eleitorado">Eleitorado (TSE 2024)</option>
+                  <option value="pop">População (IBGE 2024)</option>
+                  <option value="pib">PIB per capita</option>
+                  <option value="partido">Partido do prefeito</option>
+                </select>
+                <button class="btn-expandir-mapa" id="btn-expandir-mapa" onclick="toggleExpandirMapa('mapa')" title="Expandir mapa">⛶</button>
+              </div>
             </div>
-            <div id="mapa"></div>
+            <div class="mapa-wrap"><div id="mapa"></div></div>
           </div>
           <div>
             <div class="painel"><h3>Resumo territorial</h3><div id="dash-resumo"></div></div>
@@ -810,8 +824,11 @@ table.tab tr.clicavel{cursor:pointer}
       </div>
 
       <div class="painel" id="painel-mapa-cand">
-        <h3 id="cand-mapa-titulo">Mapa de votação</h3>
-        <div id="mapa-cand"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:2px">
+          <h3 id="cand-mapa-titulo" style="margin:0">Mapa de votação</h3>
+          <button class="btn-expandir-mapa" id="btn-expandir-mapa-cand" onclick="toggleExpandirMapa('mapa-cand')" title="Expandir mapa">⛶</button>
+        </div>
+        <div class="mapa-wrap"><div id="mapa-cand"></div></div>
       </div>
       <div class="painel" id="painel-tabela-cand" style="overflow-x:auto"><div id="cand-tabela-municipios"></div></div>
     </section>
@@ -1025,6 +1042,8 @@ table.tab tr.clicavel{cursor:pointer}
 </div></div>
 
 <div id="toasts"></div>
+<div id="mapa-backdrop" onclick="fecharMapaExpandido()"></div>
+<button class="btn-fechar-mapa-exp" id="btn-fechar-mapa-exp" onclick="fecharMapaExpandido()" title="Fechar (Esc)">✕</button>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -1032,7 +1051,7 @@ table.tab tr.clicavel{cursor:pointer}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="dados-pr.js?v=5"></script>
-<script src="js/app.js?v=17"></script>
+<script src="js/app.js?v=18"></script>
 <script src="js/municipios.js?v=13"></script>
 <script src="js/eleitoral.js?v=6"></script>
 <script src="js/radar.js?v=4"></script>
