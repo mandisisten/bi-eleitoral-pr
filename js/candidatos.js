@@ -392,23 +392,28 @@
     const comoPrimeira = municipiosIndicando.filter(x => x.posicao === 1).length;
     const comoSegunda = municipiosIndicando.filter(x => x.posicao === 2).length;
     cont.innerHTML = `
-      <div class="painel">
-        <h3 style="margin-bottom:6px">🤝 Indicado por prefeitos em ${municipiosIndicando.length} município(s)</h3>
-        <div style="font-size:12px;color:var(--tx3);margin-bottom:10px">${comoPrimeira} como 1ª opção do prefeito, ${comoSegunda} como 2ª opção</div>
-        <table class="tab"><thead><tr><th>Município</th><th>Mesorregião</th><th class="num">Eleitorado</th><th>Prefeito 2024</th><th>Posição</th></tr></thead><tbody>
-        ${municipiosIndicando.map(({ m, posicao }) => {
-          const p = m.prefeitos?.["2024"];
-          return `<tr class="clicavel" onclick="abrirMunicipio(${m.id})">
-            <td><b>${esc(m.nome)}</b></td>
-            <td style="color:var(--tx2)">${esc(m.meso.replace(" Paranaense", ""))}</td>
-            <td class="num">${fmtN(m.eleitorado2024)}</td>
-            <td>${p ? esc(p.nomeUrna) + " (" + esc(p.partido) + ")" : "—"}</td>
-            <td><span class="tag ${posicao === 1 ? "verde" : "amarelo"}">${posicao}ª opção</span></td>
-          </tr>`;
-        }).join("")}
-        </tbody></table>
-        <div style="font-size:11px;color:var(--tx3);margin-top:8px">Fonte: Indicação parcial dos gabinetes das prefeituras</div>
-      </div>`;
+      <details class="secao-colapsavel">
+        <summary>
+          <span>🤝 Indicado por prefeitos em ${municipiosIndicando.length} município(s)</span>
+          <span class="toggle-txt"><span class="toggle-fechado">Ver lista</span><span class="toggle-aberto">Ocultar</span> <span class="seta">▾</span></span>
+        </summary>
+        <div class="secao-corpo">
+          <div style="font-size:12px;color:var(--tx3);margin-bottom:10px">${comoPrimeira} como 1ª opção do prefeito, ${comoSegunda} como 2ª opção</div>
+          <table class="tab"><thead><tr><th>Município</th><th>Mesorregião</th><th class="num">Eleitorado</th><th>Prefeito 2024</th><th>Posição</th></tr></thead><tbody>
+          ${municipiosIndicando.map(({ m, posicao }) => {
+            const p = m.prefeitos?.["2024"];
+            return `<tr class="clicavel" onclick="abrirMunicipio(${m.id})">
+              <td><b>${esc(m.nome)}</b></td>
+              <td style="color:var(--tx2)">${esc(m.meso.replace(" Paranaense", ""))}</td>
+              <td class="num">${fmtN(m.eleitorado2024)}</td>
+              <td>${p ? esc(p.nomeUrna) + " (" + esc(p.partido) + ")" : "—"}</td>
+              <td><span class="tag ${posicao === 1 ? "verde" : "amarelo"}">${posicao}ª opção</span></td>
+            </tr>`;
+          }).join("")}
+          </tbody></table>
+          <div style="font-size:11px;color:var(--tx3);margin-top:8px">Fonte: Indicação parcial dos gabinetes das prefeituras</div>
+        </div>
+      </details>`;
   }
 
   function renderTabela(cand) {
@@ -419,15 +424,22 @@
       .filter(x => x.m && x.v > 0)
       .sort((a, b) => b.v - a.v);
     $("#cand-tabela-municipios").innerHTML = `
-      <div style="font-size:12px;color:var(--tx3);margin-bottom:8px">${linhas.length} município(s) com votos para ${esc(cand.nomeUrna)}</div>
-      <table class="tab"><thead><tr><th>Município</th><th>Mesorregião</th><th class="num">Votos</th><th class="num">% do eleitorado local</th></tr></thead><tbody>
-      ${linhas.map(x => `<tr class="clicavel" onclick="abrirMunicipio(${x.m.id})">
-        <td><b>${esc(x.m.nome)}</b></td>
-        <td style="color:var(--tx2)">${esc(x.m.meso.replace(" Paranaense", ""))}</td>
-        <td class="num"><b>${fmtN(x.v)}</b></td>
-        <td class="num">${x.m.eleitorado2024 ? (x.v / x.m.eleitorado2024 * 100).toFixed(2) + "%" : "—"}</td>
-      </tr>`).join("")}
-      </tbody></table>`;
+      <details class="secao-colapsavel">
+        <summary>
+          <span>📍 ${linhas.length} município(s) com votos para ${esc(cand.nomeUrna)}</span>
+          <span class="toggle-txt"><span class="toggle-fechado">Ver lista</span><span class="toggle-aberto">Ocultar</span> <span class="seta">▾</span></span>
+        </summary>
+        <div class="secao-corpo">
+          <table class="tab"><thead><tr><th>Município</th><th>Mesorregião</th><th class="num">Votos</th><th class="num">% do eleitorado local</th></tr></thead><tbody>
+          ${linhas.map(x => `<tr class="clicavel" onclick="abrirMunicipio(${x.m.id})">
+            <td><b>${esc(x.m.nome)}</b></td>
+            <td style="color:var(--tx2)">${esc(x.m.meso.replace(" Paranaense", ""))}</td>
+            <td class="num"><b>${fmtN(x.v)}</b></td>
+            <td class="num">${x.m.eleitorado2024 ? (x.v / x.m.eleitorado2024 * 100).toFixed(2) + "%" : "—"}</td>
+          </tr>`).join("")}
+          </tbody></table>
+        </div>
+      </details>`;
   }
 
   async function obterMapa() {
