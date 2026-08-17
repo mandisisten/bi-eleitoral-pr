@@ -119,6 +119,15 @@ nav{flex:1;padding:8px 10px;overflow-y:auto;overflow-x:hidden}
 .notif-texto{flex:1;font-size:12px;color:var(--tx2);line-height:1.4}
 .notif-texto b{color:var(--tx)}
 .notif-data{font-size:10.5px;color:var(--tx3);white-space:nowrap;flex-shrink:0}
+
+/* infográficos */
+.info-mapa-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.info-mapa-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px}
+.info-mapa-card b{font-size:12px;display:block;margin-bottom:6px}
+.info-mapa-leaflet{height:190px;border-radius:8px;background:var(--card2)}
+.info-mapa-legenda{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:9.5px;color:var(--tx3)}
+.info-mapa-legenda .ramp{flex:1;height:5px;border-radius:3px}
+.info-ranking-abas{display:flex;gap:6px;margin-bottom:14px}
 .conteudo{padding:24px 28px}
 .page{display:none}
 .page.ativa{display:block}
@@ -142,7 +151,7 @@ nav{flex:1;padding:8px 10px;overflow-y:auto;overflow-x:hidden}
 .grid-2.grid-mapa{grid-template-columns:1.6fr 1fr;align-items:start}
 .grid-2.grid-mapa>div:last-child .painel:last-child{margin-bottom:0}
 .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
-@media(max-width:1100px){.grid-2,.grid-3,.grid-2.grid-mapa{grid-template-columns:1fr}}
+@media(max-width:1100px){.grid-2,.grid-3,.grid-2.grid-mapa{grid-template-columns:1fr}.info-mapa-grid{grid-template-columns:1fr 1fr}}
 .mini-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .mini-stat{background:var(--bg2);border-radius:9px;padding:11px 12px}
 .mini-stat .r{font-size:9.5px;color:var(--tx3);text-transform:uppercase;font-weight:700;letter-spacing:.04em}
@@ -395,6 +404,9 @@ table.tab tr.clicavel{cursor:pointer}
   .cal-dia .d{display:block}
   .mapa-expandido{top:8px!important;left:8px!important;right:8px!important;bottom:8px!important}
   .btn-fechar-mapa-exp{top:16px;right:16px}
+  .info-mapa-grid{grid-template-columns:1fr 1fr;gap:10px}
+  .info-mapa-leaflet{height:150px}
+  .info-ranking-abas{flex-wrap:wrap}
 
   .cards{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:9px}
   .det-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
@@ -536,6 +548,10 @@ table.tab tr.clicavel{cursor:pointer}
           <svg viewBox="0 0 20 20" fill="none"><rect x="4" y="2.5" width="12" height="15" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M7 7h6M7 10.2h6M7 13.4h3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
           <span class="label">Relatórios</span><span class="nav-tooltip">Relatórios</span>
         </button>
+        <button class="nav-item" data-pagina="infograficos">
+          <svg viewBox="0 0 20 20" fill="none"><rect x="2.5" y="2.5" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.6"/><rect x="10.5" y="2.5" width="7" height="4.5" rx="1.6" stroke="currentColor" stroke-width="1.6"/><rect x="10.5" y="8" width="7" height="9.5" rx="1.6" stroke="currentColor" stroke-width="1.6"/><rect x="2.5" y="10.5" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.6"/></svg>
+          <span class="label">Infográficos</span><span class="nav-tooltip">Infográficos</span>
+        </button>
       </div>
 
       <div class="nav-grupo">
@@ -615,6 +631,7 @@ table.tab tr.clicavel{cursor:pointer}
           <button class="mh-modulo" data-pagina="materiais"><span class="mh-ico" style="background:#78350f22;color:#fdba74">📦</span>Materiais</button>
           <button class="mh-modulo" data-pagina="agenda"><span class="mh-ico" style="background:#4c1d9522;color:#c4b5fd">📅</span>Agenda</button>
           <button class="mh-modulo" data-pagina="relatorios"><span class="mh-ico" style="background:#37415122;color:#cbd5e1">📄</span>Relatórios</button>
+          <button class="mh-modulo" data-pagina="infograficos"><span class="mh-ico" style="background:#0891b222;color:#67e8f9">📊</span>Infográficos</button>
           <button class="mh-modulo" data-pagina="config" id="mh-modulo-config"><span class="mh-ico" style="background:#14532d22;color:#86efac">⚙️</span>Configurações</button>
         </div>
         <div class="mh-secao-titulo">Atividade recente</div>
@@ -1009,6 +1026,34 @@ table.tab tr.clicavel{cursor:pointer}
       <div class="painel" style="overflow-x:auto"><div id="rel-saida"><div class="vazio">Escolha um relatório acima para gerar.</div></div></div>
     </section>
 
+    <!-- INFOGRÁFICOS -->
+    <section class="page" id="page-infograficos">
+      <div class="page-header">
+        <div><h2>Infográficos</h2><div class="sub">O Paraná visto de cima — mapas de calor e comparativos, 399 municípios</div></div>
+      </div>
+
+      <div class="painel">
+        <h3 style="margin-bottom:2px">Mapas de calor</h3>
+        <div style="font-size:11.5px;color:var(--tx3);margin-bottom:14px">Cada mapa colore os 399 municípios por uma métrica diferente — passe o mouse para ver o valor.</div>
+        <div class="info-mapa-grid" id="info-mapa-grid"></div>
+      </div>
+
+      <div class="grid-2">
+        <div class="painel"><h3>Prefeituras por partido — 2016 → 2020 → 2024</h3><div class="chart-box"><canvas id="chart-info-historico"></canvas></div></div>
+        <div class="painel"><h3>Perfil territorial (população × PIB per capita)</h3><div class="chart-box"><canvas id="chart-info-bolhas"></canvas></div></div>
+      </div>
+
+      <div class="painel">
+        <h3>Rankings</h3>
+        <div class="info-ranking-abas">
+          <button class="chip-filtro ativo" data-rank="eleitorado">Eleitorado</button>
+          <button class="chip-filtro" data-rank="pib">PIB per capita</button>
+          <button class="chip-filtro" data-rank="pop">População</button>
+        </div>
+        <div class="chart-box" style="height:400px"><canvas id="chart-info-ranking"></canvas></div>
+      </div>
+    </section>
+
     <!-- CONFIGURAÇÕES -->
     <section class="page" id="page-config">
       <div class="page-header"><div><h2>Configurações</h2><div class="sub">Candidato e usuários</div></div></div>
@@ -1064,5 +1109,6 @@ table.tab tr.clicavel{cursor:pointer}
 <script src="js/candidatos.js?v=13"></script>
 <script src="js/config.js?v=3"></script>
 <script src="js/campanhas.js?v=2"></script>
+<script src="js/infograficos.js?v=1"></script>
 </body>
 </html>
