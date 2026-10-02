@@ -654,8 +654,15 @@ table.tab tr.clicavel{cursor:pointer}
     <!-- APURAÇÃO AO VIVO -->
     <section class="page" id="page-apuracao">
       <div class="page-header">
-        <div><h2>Apuração — Eleições 2026 <span class="live-badge"><span class="pt"></span>AO VIVO</span></h2><div class="sub">Deputado Estadual no Paraná — dados oficiais do TSE, direto da fonte</div></div>
+        <div><h2>Apuração — Eleições 2026 <span class="live-badge"><span class="pt"></span>AO VIVO</span></h2><div class="sub" id="ap-sub">Deputado Estadual no Paraná — dados oficiais do TSE, direto da fonte</div></div>
         <div class="acoes"><button class="btn sec" id="btn-ap-atualizar">🔄 Atualizar agora</button></div>
+      </div>
+
+      <div class="info-ranking-abas" id="ap-cargo-abas" style="margin-bottom:16px">
+        <button class="chip-filtro" data-cargo="governador">Governador</button>
+        <button class="chip-filtro" data-cargo="senador">Senador</button>
+        <button class="chip-filtro" data-cargo="depfederal">Deputado Federal</button>
+        <button class="chip-filtro ativo" data-cargo="depestadual">Deputado Estadual</button>
       </div>
 
       <div class="ap-status-bar">
@@ -677,8 +684,8 @@ table.tab tr.clicavel{cursor:pointer}
 
       <div class="grid-2">
         <div class="painel">
-          <h3>Por partido — votos e vagas projetadas</h3>
-          <div style="font-size:11px;color:var(--tx3);margin-bottom:12px">Projeção recalculada a cada atualização com o quociente eleitoral sobre os votos já apurados (quociente partidário + sobras por maiores médias) — mesmo método validado no Simulador de Chapa.</div>
+          <h3 id="ap-partidos-titulo">Por partido — votos e vagas projetadas</h3>
+          <div style="font-size:11px;color:var(--tx3);margin-bottom:12px" id="ap-partidos-nota">Projeção recalculada a cada atualização com o quociente eleitoral sobre os votos já apurados (quociente partidário + sobras por maiores médias) — mesmo método validado no Simulador de Chapa.</div>
           <div id="ap-partidos"></div>
         </div>
         <div class="painel">
@@ -1215,6 +1222,6 @@ table.tab tr.clicavel{cursor:pointer}
 <script src="js/config.js?v=3"></script>
 <script src="js/campanhas.js?v=2"></script>
 <script src="js/infograficos.js?v=2"></script>
-<script src="js/apuracao.js?v=3"></script>
+<script src="js/apuracao.js?v=4"></script>
 </body>
 </html>

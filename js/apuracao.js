@@ -20,9 +20,20 @@
 
 (() => {
   const CD_ELEICAO = "6259";
-  const CARGO = "7";
   const UF = "pr";
   const AMBIENTE_BASE = "https://resultados.tse.jus.br/oficial/ele2026";
+
+  /* Códigos de cargo confirmados direto da config oficial do TSE (02/10/2026).
+     "proporcional" decide o tipo de projeção: Federal/Estadual usam quociente
+     partidário + sobras (nº de vagas = cadeiras do PR); Governador/Senador são
+     por maioria de votos (os N mais votados), sem quociente. */
+  const CARGOS = {
+    governador:   { codigo: "3", nome: "Governador",        vagas: 1,  proporcional: false },
+    senador:      { codigo: "5", nome: "Senador",           vagas: 2,  proporcional: false },
+    depfederal:   { codigo: "6", nome: "Deputado Federal",  vagas: 30, proporcional: true },
+    depestadual:  { codigo: "7", nome: "Deputado Estadual", vagas: 54, proporcional: true }
+  };
+  let cargoAtivo = "depestadual";
 
   const PROXIES = [
     url => "https://proxy.corsfix.com/?" + url,
@@ -30,27 +41,28 @@
     url => "https://corsproxy.io/?url=" + encodeURIComponent(url)
   ];
 
-  function candidatosFilenames() {
+  function candidatosFilenames(cargo) {
     const dir = `${AMBIENTE_BASE}/${CD_ELEICAO}/dados/${UF}`;
+    const c4 = cargo.codigo.padStart(4, "0");
     const nomes = [
-      `${UF}-c0007-e000006259-u.json`,
-      `${UF}-c7-e6259-u.json`,
-      `${UF}-c0007-e000006259-u.jws`
+      `${UF}-c${c4}-e000006259-u.json`,
+      `${UF}-c${cargo.codigo}-e6259-u.json`,
+      `${UF}-c${c4}-e000006259-u.jws`
     ];
     return nomes.map(n => `${dir}/${n}`);
   }
-  function municipioFilenames(codTse) {
+  function municipioFilenames(codTse, cargo) {
     const dir = `${AMBIENTE_BASE}/${CD_ELEICAO}/dados/${UF}`;
+    const c4 = cargo.codigo.padStart(4, "0");
     const nomes = [
-      `${UF}${codTse}-c0007-e000006259-u.json`,
-      `${UF}${codTse}-c0007-e6259-u.json`,
-      `${UF}${codTse}-c7-e6259-u.json`
+      `${UF}${codTse}-c${c4}-e000006259-u.json`,
+      `${UF}${codTse}-c${cargo.codigo}-e6259-u.json`
     ];
     return nomes.map(n => `${dir}/${n}`);
   }
 
   let proxyPreferido = 0;       // índice do proxy que funcionou da última vez — tenta ele primeiro
-  let urlEstadoQueFunciona = null; // fixa a URL certa assim que acha, pra não ficar testando toda hora
+  let urlsEstadoQueFuncionam = {}; // por cargo: fixa a URL certa assim que acha, pra não ficar testando toda hora
 
   function decodeJWS(texto) {
     // Config files vêm assinados (JOSE/JWS compacto: header.payload.sig) — já os
@@ -94,24 +106,25 @@
     return null;
   }
 
-  async function buscarResultadoEstado() {
-    if (urlEstadoQueFunciona) {
-      const json = await tentarUrl(urlEstadoQueFunciona);
+  async function buscarResultadoEstado(cargo) {
+    const urlFixada = urlsEstadoQueFuncionam[cargo.codigo];
+    if (urlFixada) {
+      const json = await tentarUrl(urlFixada);
       if (json) return json;
-      urlEstadoQueFunciona = null; // parou de funcionar — tenta descobrir de novo
+      delete urlsEstadoQueFuncionam[cargo.codigo]; // parou de funcionar — tenta descobrir de novo
     }
-    for (const url of candidatosFilenames()) {
+    for (const url of candidatosFilenames(cargo)) {
       const json = await tentarUrl(url);
-      if (json) { urlEstadoQueFunciona = url; return json; }
+      if (json) { urlsEstadoQueFuncionam[cargo.codigo] = url; return json; }
     }
     return null;
   }
 
-  async function buscarResultadoMunicipio(codTse) {
-    const urls = municipioFilenames(codTse);
+  async function buscarResultadoMunicipio(codTse, cargo) {
+    const urls = municipioFilenames(codTse, cargo);
     for (const url of urls) {
-      const r = await tentarUrl(url);
-      if (r) return r.json;
+      const json = await tentarUrl(url);
+      if (json) return json;
     }
     return null;
   }
@@ -140,8 +153,13 @@
     return cands.reduce((a, c) => a + c.votos, 0);
   }
 
-  /* ---------- Projeção de vagas (quociente partidário + sobras — mesmo método do Simulador de Chapa) ---------- */
-  function calcularProjecaoVagas(candidatos, vagas) {
+  /* ---------- Projeção de vagas ----------
+     Proporcional (Dep. Federal/Estadual): quociente partidário + sobras por
+     maiores médias — mesmo método já validado no Simulador de Chapa.
+     Majoritário (Governador/Senador): não tem quociente — são eleitos os N
+     mais votados (1 só com +50% no caso do Governador, senão vai pro 2º
+     turno; aqui só mostramos quem está na frente, sem simular 2º turno). */
+  function calcularProjecaoVagas(candidatos, vagas, proporcional) {
     const porPartido = {};
     candidatos.forEach(c => {
       const p = c.partido || "(sem partido)";
@@ -150,8 +168,17 @@
       porPartido[p].candidatos.push(c);
     });
     const totalGeral = Object.values(porPartido).reduce((a, p) => a + p.total, 0);
-    const qe = vagas > 0 ? Math.max(1, Math.floor(totalGeral / vagas)) : 1;
     const lista = Object.values(porPartido);
+    lista.sort((a, b) => b.total - a.total);
+
+    if (!proporcional) {
+      // majoritário: não há "vaga por partido" de verdade — cada vaga é de um candidato.
+      // Mostramos aqui só o agregado por partido pra exibição; quem está "à frente" vem de renderCandidatos.
+      lista.forEach(p => { p.vagasTotal = 0; p.vagasQP = 0; p.vagasSobra = 0; });
+      return { lista, qe: 0, totalGeral, proporcional: false };
+    }
+
+    const qe = vagas > 0 ? Math.max(1, Math.floor(totalGeral / vagas)) : 1;
     lista.forEach(p => { p.vagasQP = Math.floor(p.total / qe); });
     let sobras = Math.max(0, vagas - lista.reduce((a, p) => a + p.vagasQP, 0));
     for (let i = 0; i < sobras && lista.length; i++) {
@@ -163,8 +190,7 @@
       if (melhor) melhor.vagasSobra = (melhor.vagasSobra || 0) + 1;
     }
     lista.forEach(p => { p.vagasTotal = p.vagasQP + (p.vagasSobra || 0); });
-    lista.sort((a, b) => b.total - a.total);
-    return { lista, qe, totalGeral };
+    return { lista, qe, totalGeral, proporcional: true };
   }
 
   const CORES_FALLBACK = ["#3b82f6", "#22c55e", "#f59e0b", "#a78bfa", "#ef4444", "#06b6d4", "#ec4899", "#84cc16", "#f97316", "#64748b"];
@@ -207,21 +233,25 @@
     }
     $("#ap-status-texto").innerHTML = erro
       ? `Sem dados no momento.`
-      : `<b>${pct.toFixed(1).replace(".", ",")}%</b> das seções apuradas — Deputado Estadual/PR`;
+      : `<b>${pct.toFixed(1).replace(".", ",")}%</b> das seções apuradas — ${CARGOS[cargoAtivo].nome}/PR`;
   }
 
-  function renderKpis(candidatos, totalGeral, vagas) {
+  function renderKpis(candidatos, totalGeral, cargo) {
     const eleitos = candidatos.filter(c => /ELEITO/.test(c.situacao || "")).length;
     const liderA = [...candidatos].sort((a, b) => b.votos - a.votos)[0];
     $("#ap-kpis").innerHTML = `
-      <div class="card-kpi destaque"><div class="rotulo">Votos apurados (Dep. Estadual)</div><div class="valor">${fmtN(totalGeral)}</div></div>
+      <div class="card-kpi destaque"><div class="rotulo">Votos apurados (${esc(cargo.nome)})</div><div class="valor">${fmtN(totalGeral)}</div></div>
       <div class="card-kpi"><div class="rotulo">Candidatos no pleito</div><div class="valor">${candidatos.length}</div></div>
-      <div class="card-kpi"><div class="rotulo">Eleitos confirmados</div><div class="valor">${eleitos} <span style="font-size:13px;color:var(--tx3)">/ ${vagas}</span></div></div>
+      <div class="card-kpi"><div class="rotulo">${cargo.proporcional ? "Eleitos confirmados" : "Vaga(s) em disputa"}</div><div class="valor">${cargo.proporcional ? eleitos : cargo.vagas} <span style="font-size:13px;color:var(--tx3)">${cargo.proporcional ? "/ " + cargo.vagas : ""}</span></div></div>
       <div class="card-kpi"><div class="rotulo">Mais votado no momento</div><div class="valor" style="font-size:16px">${liderA ? esc(liderA.nome) : "—"}</div>
         <div class="extra">${liderA ? fmtN(liderA.votos) + " votos (" + esc(liderA.partido) + ")" : ""}</div></div>`;
   }
 
   function renderPartidos(projecao) {
+    $("#ap-partidos-titulo").textContent = projecao.proporcional ? "Por partido — votos e vagas projetadas" : "Por partido — total de votos";
+    $("#ap-partidos-nota").textContent = projecao.proporcional
+      ? "Projeção recalculada a cada atualização com o quociente eleitoral sobre os votos já apurados (quociente partidário + sobras por maiores médias) — mesmo método validado no Simulador de Chapa."
+      : "Cargo majoritário — não há vaga \"por partido\" (quem é eleito são os candidatos mais votados, veja ao lado). Aqui é só o total agregado de votos de cada partido.";
     const max = projecao.lista[0] ? projecao.lista[0].total : 1;
     $("#ap-partidos").innerHTML = projecao.lista.length ? projecao.lista.map((p, i) => {
       const cor = corDoPartido(p.partido, i);
@@ -229,17 +259,17 @@
       return `<div class="ap-partido-row">
         <div class="ap-partido-sigla" style="color:${cor}">${esc(p.partido)}</div>
         <div class="ap-partido-bar"><div style="width:${pct}%;background:${cor}"></div></div>
-        <div class="ap-partido-vagas"><b>${p.vagasTotal}</b> vaga(s)<br>${fmtN(p.total)} votos</div>
+        <div class="ap-partido-vagas">${projecao.proporcional ? `<b>${p.vagasTotal}</b> vaga(s)<br>` : ""}${fmtN(p.total)} votos</div>
       </div>`;
     }).join("") : '<div class="vazio">Aguardando votos apurados.</div>';
   }
 
-  function renderCandidatos(candidatos) {
+  function renderCandidatos(candidatos, cargo) {
     const top = [...candidatos].sort((a, b) => b.votos - a.votos).slice(0, 20);
     $("#ap-candidatos").innerHTML = top.length ? top.map((c, i) => `
       <div class="ap-cand-row">
         <div class="ap-cand-rank">${i + 1}º</div>
-        <div class="ap-cand-nome"><b>${esc(c.nome)}</b><span>${esc(c.partido)}${c.situacao ? " · " + esc(c.situacao) : ""}</span></div>
+        <div class="ap-cand-nome"><b>${esc(c.nome)}</b><span>${esc(c.partido)}${c.situacao ? " · " + esc(c.situacao) : (i < cargo.vagas && !cargo.proporcional ? " · eleito(a) no momento" : "")}</span></div>
         <div class="ap-cand-votos"><b>${fmtN(c.votos)}</b></div>
       </div>`).join("") : '<div class="vazio">Aguardando votos apurados.</div>';
   }
@@ -247,26 +277,37 @@
   async function atualizar() {
     if (buscando) return;
     buscando = true;
+    const cargo = CARGOS[cargoAtivo];
     $("#ap-status-texto").innerHTML = `<b>Buscando...</b>`;
     $("#btn-ap-atualizar").disabled = true;
     try {
-      const json = await buscarResultadoEstado();
+      const json = await buscarResultadoEstado(cargo);
       if (!json) { renderStatus(null, "não encontrei o arquivo de resultado ainda"); }
       else {
         ultimoResultado = json;
         const candidatos = extrairCandidatos(json);
         const totalGeral = extrairTotalVotos(json);
-        const projecao = calcularProjecaoVagas(candidatos, 54);
+        const projecao = calcularProjecaoVagas(candidatos, cargo.vagas, cargo.proporcional);
         renderStatus(json, null);
-        renderKpis(candidatos, totalGeral, 54);
+        renderKpis(candidatos, totalGeral, cargo);
         renderPartidos(projecao);
-        renderCandidatos(candidatos);
+        renderCandidatos(candidatos, cargo);
       }
     } catch (e) {
       renderStatus(null, e.message);
     }
     buscando = false;
     $("#btn-ap-atualizar").disabled = false;
+  }
+
+  function trocarCargo(id) {
+    if (cargoAtivo === id) return;
+    cargoAtivo = id;
+    $$("#ap-cargo-abas .chip-filtro").forEach(b => b.classList.toggle("ativo", b.dataset.cargo === id));
+    $("#ap-sub").textContent = `${CARGOS[id].nome} no Paraná — dados oficiais do TSE, direto da fonte`;
+    const det = $("#ap-mun-detalhe");
+    if (det) det.innerHTML = "";
+    atualizar();
   }
 
   /* ---------- Busca por município ---------- */
@@ -292,11 +333,11 @@
     det.innerHTML = '<div class="vazio">Buscando apuração de ' + esc(m.nome) + '...</div>';
     const codTse = getMunByIbge()[id];
     if (!codTse) { det.innerHTML = '<div class="vazio">Não encontrei o código TSE deste município.</div>'; return; }
-    const json = await buscarResultadoMunicipio(codTse);
+    const json = await buscarResultadoMunicipio(codTse, CARGOS[cargoAtivo]);
     if (!json) { det.innerHTML = '<div class="vazio">Apuração de ' + esc(m.nome) + ' ainda não disponível.</div>'; return; }
     const candidatos = extrairCandidatos(json).sort((a, b) => b.votos - a.votos).slice(0, 15);
     const pct = extrairPercentualApurado(json);
-    det.innerHTML = `<div style="font-size:12px;color:var(--tx3);margin-bottom:10px">${pct.toFixed(1).replace(".", ",")}% das seções apuradas em ${esc(m.nome)}</div>` +
+    det.innerHTML = `<div style="font-size:12px;color:var(--tx3);margin-bottom:10px">${CARGOS[cargoAtivo].nome} — ${pct.toFixed(1).replace(".", ",")}% das seções apuradas em ${esc(m.nome)}</div>` +
       (candidatos.length ? `<table class="tab"><thead><tr><th>#</th><th>Candidato</th><th>Partido</th><th class="num">Votos</th></tr></thead><tbody>
         ${candidatos.map((c, i) => `<tr><td>${i + 1}º</td><td><b>${esc(c.nome)}</b></td><td>${esc(c.partido)}</td><td class="num">${fmtN(c.votos)}</td></tr>`).join("")}
         </tbody></table>` : '<div class="vazio">Sem votos apurados ainda.</div>');
@@ -309,6 +350,7 @@
     inicializado = true;
     popularBuscaMunicipio();
     $("#btn-ap-atualizar").onclick = atualizar;
+    $$("#ap-cargo-abas .chip-filtro").forEach(b => b.onclick = () => trocarCargo(b.dataset.cargo));
     timerAtualizacao = setInterval(atualizar, 60000);
   }
 
