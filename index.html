@@ -690,13 +690,17 @@ table.tab tr.clicavel{cursor:pointer}
           <div id="ap-partidos"></div>
         </div>
         <div class="painel">
-          <h3 id="ap-candidatos-titulo">Candidatos mais votados</h3>
-          <div id="ap-candidatos"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+            <h3 id="ap-candidatos-titulo" style="margin:0">Candidatos mais votados</h3>
+            <select id="ap-filtro-partido" style="width:auto"><option value="">Todos os partidos</option></select>
+          </div>
+          <div id="ap-candidatos" style="margin-top:10px"></div>
         </div>
       </div>
 
       <div class="painel">
         <h3 style="margin-bottom:10px">Por município</h3>
+        <div style="font-size:11px;color:var(--tx3);margin-bottom:10px">Mostra a apuração desse município pros 5 cargos (Presidente/Governador/Senador/Dep. Federal/Dep. Estadual) de uma vez, independente da aba selecionada acima.</div>
         <div class="ap-mun-busca-wrap">
           <input id="ap-mun-busca" placeholder="Digite o nome de um município para ver a apuração local...">
           <div class="ap-mun-resultados" id="ap-mun-resultados"></div>
@@ -1224,6 +1228,6 @@ table.tab tr.clicavel{cursor:pointer}
 <script src="js/config.js?v=3"></script>
 <script src="js/campanhas.js?v=2"></script>
 <script src="js/infograficos.js?v=2"></script>
-<script src="js/apuracao.js?v=9"></script>
+<script src="js/apuracao.js?v=10"></script>
 </body>
 </html>
