@@ -120,6 +120,43 @@ nav{flex:1;padding:8px 10px;overflow-y:auto;overflow-x:hidden}
 .notif-texto b{color:var(--tx)}
 .notif-data{font-size:10.5px;color:var(--tx3);white-space:nowrap;flex-shrink:0}
 
+/* apuração ao vivo */
+.live-dot{position:absolute;left:10px;top:10px;width:7px;height:7px;border-radius:50%;background:var(--err);animation:pulso-live 1.6s ease-in-out infinite}
+.nav-item-live{position:relative;padding-left:30px!important}
+.nav-item-live svg{margin-left:0}
+@keyframes pulso-live{0%,100%{box-shadow:0 0 0 0 #ef444466}50%{box-shadow:0 0 0 5px #ef444400}}
+.live-badge{display:inline-flex;align-items:center;gap:6px;background:var(--err);color:#fff;font-size:11px;font-weight:800;padding:5px 11px;border-radius:20px;letter-spacing:.03em}
+.live-badge .pt{width:7px;height:7px;border-radius:50%;background:#fff;animation:pulso-live-pt 1.2s ease-in-out infinite}
+@keyframes pulso-live-pt{0%,100%{opacity:1}50%{opacity:.3}}
+.ap-status-bar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 20px;margin-bottom:20px}
+.ap-status-info{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.ap-status-texto{font-size:12.5px;color:var(--tx2)}
+.ap-status-texto b{color:var(--tx)}
+.ap-pct-wrap{display:flex;align-items:center;gap:10px}
+.ap-pct-bar{width:160px;height:8px;background:var(--bg2);border-radius:5px;overflow:hidden}
+.ap-pct-bar>div{height:100%;background:var(--err);border-radius:5px;transition:width .4s}
+.ap-pct-valor{font-size:13px;font-weight:800;min-width:46px}
+.ap-partido-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #1e2740}
+.ap-partido-row:last-child{border-bottom:none}
+.ap-partido-sigla{width:62px;flex-shrink:0;font-weight:800;font-size:12.5px;padding:4px 0;text-align:center;border-radius:6px;background:var(--bg2)}
+.ap-partido-bar{flex:1;height:18px;background:var(--bg2);border-radius:5px;overflow:hidden;position:relative}
+.ap-partido-bar>div{height:100%;border-radius:5px}
+.ap-partido-vagas{width:92px;flex-shrink:0;text-align:right;font-size:12px;color:var(--tx2)}
+.ap-partido-vagas b{color:var(--tx);font-size:14px}
+.ap-cand-row{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #1e2740;font-size:13px}
+.ap-cand-row:last-child{border-bottom:none}
+.ap-cand-rank{width:24px;color:var(--tx3);font-size:12px;flex-shrink:0}
+.ap-cand-nome{flex:1;min-width:0}
+.ap-cand-nome b{font-weight:700}
+.ap-cand-nome span{display:block;font-size:11px;color:var(--tx3)}
+.ap-cand-votos{text-align:right;flex-shrink:0}
+.ap-cand-votos b{font-size:13.5px}
+.ap-mun-busca-wrap{position:relative}
+.ap-mun-resultados{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--card2);border:1px solid var(--border);border-radius:10px;max-height:280px;overflow-y:auto;z-index:50}
+.ap-mun-resultados.aberto{display:block}
+.ap-mun-resultados .item{padding:9px 12px;cursor:pointer;font-size:12.5px}
+.ap-mun-resultados .item:hover{background:var(--card)}
+
 /* infográficos */
 .info-mapa-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
 .info-mapa-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px}
@@ -499,6 +536,15 @@ table.tab tr.clicavel{cursor:pointer}
       </button>
 
       <div class="nav-grupo">
+        <div class="nav-grupo-titulo">Eleição 2026</div>
+        <button class="nav-item nav-item-live" data-pagina="apuracao">
+          <span class="live-dot"></span>
+          <svg viewBox="0 0 20 20" fill="none"><path d="M10 2.5v3M10 14.5v3M2.5 10h3M14.5 10h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="10" cy="10" r="4" stroke="currentColor" stroke-width="1.8"/></svg>
+          <span class="label">Apuração ao vivo</span><span class="nav-tooltip">Apuração ao vivo</span>
+        </button>
+      </div>
+
+      <div class="nav-grupo">
         <div class="nav-grupo-titulo">Visão Geral</div>
         <button class="nav-item ativo" data-pagina="dashboard">
           <svg viewBox="0 0 20 20" fill="none"><rect x="2.5" y="2.5" width="6.5" height="6.5" rx="1.6" stroke="currentColor" stroke-width="1.6"/><rect x="11" y="2.5" width="6.5" height="6.5" rx="1.6" stroke="currentColor" stroke-width="1.6"/><rect x="2.5" y="11" width="6.5" height="6.5" rx="1.6" stroke="currentColor" stroke-width="1.6"/><rect x="11" y="11" width="6.5" height="6.5" rx="1.6" stroke="currentColor" stroke-width="1.6"/></svg>
@@ -605,6 +651,52 @@ table.tab tr.clicavel{cursor:pointer}
 
     <div class="conteudo">
 
+    <!-- APURAÇÃO AO VIVO -->
+    <section class="page" id="page-apuracao">
+      <div class="page-header">
+        <div><h2>Apuração — Eleições 2026 <span class="live-badge"><span class="pt"></span>AO VIVO</span></h2><div class="sub">Deputado Estadual no Paraná — dados oficiais do TSE, direto da fonte</div></div>
+        <div class="acoes"><button class="btn sec" id="btn-ap-atualizar">🔄 Atualizar agora</button></div>
+      </div>
+
+      <div class="ap-status-bar">
+        <div class="ap-status-info">
+          <div class="ap-pct-wrap">
+            <div class="ap-pct-bar"><div id="ap-pct-fill" style="width:0%"></div></div>
+            <div class="ap-pct-valor" id="ap-pct-valor">0%</div>
+          </div>
+          <div class="ap-status-texto" id="ap-status-texto">Aguardando início da apuração.</div>
+        </div>
+        <div class="ap-status-texto" id="ap-ultima-att">—</div>
+      </div>
+
+      <div id="ap-aviso-config" class="painel" style="display:none;border-color:var(--warn)">
+        <div style="font-size:12.5px;color:var(--tx2)" id="ap-aviso-config-texto"></div>
+      </div>
+
+      <div class="cards" id="ap-kpis"></div>
+
+      <div class="grid-2">
+        <div class="painel">
+          <h3>Por partido — votos e vagas projetadas</h3>
+          <div style="font-size:11px;color:var(--tx3);margin-bottom:12px">Projeção recalculada a cada atualização com o quociente eleitoral sobre os votos já apurados (quociente partidário + sobras por maiores médias) — mesmo método validado no Simulador de Chapa.</div>
+          <div id="ap-partidos"></div>
+        </div>
+        <div class="painel">
+          <h3>Candidatos mais votados</h3>
+          <div id="ap-candidatos"></div>
+        </div>
+      </div>
+
+      <div class="painel">
+        <h3 style="margin-bottom:10px">Por município</h3>
+        <div class="ap-mun-busca-wrap">
+          <input id="ap-mun-busca" placeholder="Digite o nome de um município para ver a apuração local...">
+          <div class="ap-mun-resultados" id="ap-mun-resultados"></div>
+        </div>
+        <div id="ap-mun-detalhe" style="margin-top:14px"></div>
+      </div>
+    </section>
+
     <!-- DASHBOARD -->
     <section class="page ativa" id="page-dashboard">
       <div class="page-header">
@@ -623,6 +715,7 @@ table.tab tr.clicavel{cursor:pointer}
         <div class="mh-kpis" id="mh-kpis"></div>
         <div class="mh-secao-titulo">Módulos</div>
         <div class="mh-modulos">
+          <button class="mh-modulo" data-pagina="apuracao" style="position:relative"><span class="mh-ico" style="background:#ef444422;color:#fca5a5">🔴</span>Apuração ao vivo</button>
           <button class="mh-modulo" data-pagina="municipios"><span class="mh-ico" style="background:#1d4ed822;color:#60a5fa">🏛️</span>Municípios</button>
           <button class="mh-modulo" data-pagina="liderancas"><span class="mh-ico" style="background:#78350f22;color:#fbbf24">🤝</span>Lideranças</button>
           <button class="mh-modulo" data-pagina="votos"><span class="mh-ico" style="background:#1e3a8a22;color:#93c5fd">🗳️</span>Expectativa</button>
@@ -1111,6 +1204,7 @@ table.tab tr.clicavel{cursor:pointer}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="dados-pr.js?v=5"></script>
+<script src="tse-municipios-pr.js?v=1"></script>
 <script src="js/app.js?v=18"></script>
 <script src="js/municipios.js?v=13"></script>
 <script src="js/eleitoral.js?v=6"></script>
@@ -1121,5 +1215,6 @@ table.tab tr.clicavel{cursor:pointer}
 <script src="js/config.js?v=3"></script>
 <script src="js/campanhas.js?v=2"></script>
 <script src="js/infograficos.js?v=2"></script>
+<script src="js/apuracao.js?v=3"></script>
 </body>
 </html>
