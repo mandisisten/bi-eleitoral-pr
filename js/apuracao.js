@@ -298,6 +298,22 @@
       </div>`).join("") : '<div class="vazio">Nenhum candidato registrado para esse cargo ainda.</div>';
   }
 
+  // Guarda o último json (ou null) e o candidatos/projeção já calculados de cada cargo que já
+  // foi buscado nesta sessão — assim trocar pra uma aba já visitada mostra na hora o que já se
+  // sabia (mesmo que zero voto), em vez de ficar em branco esperando a rede de novo.
+  const cacheUltimoPorCargo = {};
+
+  function renderComDados(cargoKey, json, erro) {
+    const cargo = CARGOS[cargoKey];
+    const candidatos = mesclarComRoster(json ? extrairCandidatos(json) : [], cargoKey);
+    const totalGeral = candidatos.reduce((a, c) => a + c.votos, 0);
+    const projecao = calcularProjecaoVagas(candidatos, cargo.vagas, cargo.proporcional);
+    renderStatus(json, erro);
+    renderKpis(candidatos, totalGeral, cargo);
+    renderPartidos(projecao);
+    renderCandidatos(candidatos, cargo);
+  }
+
   async function atualizar() {
     if (buscando) return;
     buscando = true;
@@ -306,7 +322,6 @@
     // cargo com a lista de candidatos de outro quando a resposta finalmente chegar.
     const cargoKey = cargoAtivo;
     const cargo = CARGOS[cargoKey];
-    $("#ap-status-texto").innerHTML = `<b>Buscando...</b>`;
     $("#btn-ap-atualizar").disabled = true;
     let json = null, erro = null;
     try {
@@ -318,22 +333,17 @@
     }
     buscando = false;
     $("#btn-ap-atualizar").disabled = false;
+    cacheUltimoPorCargo[cargoKey] = { json, erro };
     if (cargoAtivo !== cargoKey) {
-      // o usuário trocou de aba durante essa busca — descarta esse resultado (seria do
-      // cargo errado) e refaz a busca já para a aba que está realmente selecionada agora.
+      // o usuário trocou de aba durante essa busca — não redesenha aqui (a aba atual já está
+      // mostrando o cache/roster que tinha). MAS a chamada de atualizar() que o próprio clique
+      // da aba nova fez pode ter sido um no-op (bloqueada pelo "buscando" que ainda era true
+      // por causa DESSA busca) — sem isso, a aba nova nunca buscaria dado real nenhum até o
+      // próximo timer de 60s. Refaz agora pra aba que está realmente selecionada.
       atualizar();
       return;
     }
-    // Mesmo sem resultado (antes da apuração começar), já mostra os candidatos
-    // oficialmente registrados (roster-candidatos-2026.js) com 0 voto — assim que
-    // o TSE começar a publicar, os votos reais vão sendo sobrepostos por número.
-    const candidatos = mesclarComRoster(json ? extrairCandidatos(json) : [], cargoKey);
-    const totalGeral = candidatos.reduce((a, c) => a + c.votos, 0);
-    const projecao = calcularProjecaoVagas(candidatos, cargo.vagas, cargo.proporcional);
-    renderStatus(json, erro);
-    renderKpis(candidatos, totalGeral, cargo);
-    renderPartidos(projecao);
-    renderCandidatos(candidatos, cargo);
+    renderComDados(cargoKey, json, erro);
   }
 
   function trocarCargo(id) {
@@ -343,6 +353,12 @@
     $("#ap-sub").textContent = `${CARGOS[id].nome} no Paraná — dados oficiais do TSE, direto da fonte`;
     const det = $("#ap-mun-detalhe");
     if (det) det.innerHTML = "";
+    // Mostra ALGO na hora (cache da última busca desse cargo nesta sessão, ou o roster com 0
+    // voto se é a 1ª vez) em vez de deixar a tela parada em "Buscando..." até a rede responder —
+    // é isso que fazia a troca de aba "parecer" lenta mesmo quando a lista de nomes já é conhecida.
+    const cache = cacheUltimoPorCargo[id];
+    renderComDados(id, cache ? cache.json : null, cache ? cache.erro : null);
+    if (!cache) $("#ap-status-texto").innerHTML = `<b>Buscando...</b>`;
     atualizar();
   }
 
@@ -392,6 +408,11 @@
 
   function render() {
     init();
+    // Mesma lógica do trocarCargo: se já tem algo em cache (ou pelo menos o roster), mostra na
+    // hora em vez de deixar a tela em branco até a primeira busca de rede terminar.
+    const cache = cacheUltimoPorCargo[cargoAtivo];
+    renderComDados(cargoAtivo, cache ? cache.json : null, cache ? cache.erro : null);
+    if (!cache) $("#ap-status-texto").innerHTML = `<b>Buscando...</b>`;
     atualizar();
   }
 
