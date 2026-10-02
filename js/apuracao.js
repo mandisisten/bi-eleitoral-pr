@@ -7,33 +7,51 @@
    dá pra rodar um coletor próprio — essa é a opção mais rápida dentro
    do que foi combinado.
 
-   O que está CONFIRMADO (direto da config oficial do TSE, 02/10/2026):
-     - cd_eleicao da "Eleição Ordinária Estadual - 2026 1º Turno" = 6259
-     - cargo Deputado Estadual = 7
+   O que está CONFIRMADO (direto da config oficial do TSE, 02/10/2026,
+   arquivo "comum/config/ele-c.jws" — a mesma fonte que já tinha dado
+   os códigos de PR agora confirmou também Presidente e o 2º turno):
+     - cd_eleicao "Eleição Ordinária Estadual - 2026 1º Turno" = 6259
+       (Governador/Senador/Dep. Federal/Dep. Estadual, abrangência PR)
+       — 2º turno (só Governador, se ninguém passar de 50%) = 6260
+     - cd_eleicao "Eleição Ordinária Federal - 2026 1º Turno" = 6257
+       (Presidente, abrangência NACIONAL — por isso usa UF "br", não
+       "pr") — 2º turno (quase certo de acontecer) = 6258
+     - cargo Presidente = 1, Governador = 3, Senador = 5,
+       Dep. Federal = 6, Dep. Estadual = 7
      - UF Paraná = "pr"
    O que NÃO dá pra confirmar antes de domingo (arquivo só existe depois
    que a apuração começa): o nome exato do arquivo de resultado. Por
    isso FILENAME_VARIANTES tenta várias combinações plausíveis — na
    primeira que funcionar, o código já fixa essa combinação e usa só
-   ela dali pra frente (ver cache em `combinacaoQueFunciona`).
+   ela dali pra frente (ver cache em `urlsEstadoQueFuncionam`).
    ===================================================================== */
 
 (() => {
-  const CD_ELEICAO = "6259";
-  const UF = "pr";
   const AMBIENTE_BASE = "https://resultados.tse.jus.br/oficial/ele2026";
 
   /* Códigos de cargo confirmados direto da config oficial do TSE (02/10/2026).
      "proporcional" decide o tipo de projeção: Federal/Estadual usam quociente
-     partidário + sobras (nº de vagas = cadeiras do PR); Governador/Senador são
-     por maioria de votos (os N mais votados), sem quociente. */
+     partidário + sobras (nº de vagas = cadeiras do PR); Presidente/Governador/
+     Senador são por maioria de votos (os N mais votados), sem quociente.
+     "cdEleicao"/"uf" variam por cargo: Presidente é um pleito NACIONAL separado
+     (cd_eleicao 6257, uf "br"), os outros 3 são do pleito estadual do PR
+     (cd_eleicao 6259, uf "pr"). "cdEleicaoT2" é o código do 2º turno, se/quando
+     precisar trocar (ver TURNO2 abaixo) — null pra cargo que nunca tem 2º turno. */
   const CARGOS = {
-    governador:   { codigo: "3", nome: "Governador",        vagas: 1,  proporcional: false },
-    senador:      { codigo: "5", nome: "Senador",           vagas: 2,  proporcional: false },
-    depfederal:   { codigo: "6", nome: "Deputado Federal",  vagas: 30, proporcional: true },
-    depestadual:  { codigo: "7", nome: "Deputado Estadual", vagas: 54, proporcional: true }
+    presidente:   { codigo: "1", nome: "Presidente",        vagas: 1,  proporcional: false, cdEleicao: "6257", cdEleicaoT2: "6258", uf: "br" },
+    governador:   { codigo: "3", nome: "Governador",        vagas: 1,  proporcional: false, cdEleicao: "6259", cdEleicaoT2: "6260", uf: "pr" },
+    senador:      { codigo: "5", nome: "Senador",           vagas: 2,  proporcional: false, cdEleicao: "6259", cdEleicaoT2: null,   uf: "pr" },
+    depfederal:   { codigo: "6", nome: "Deputado Federal",  vagas: 30, proporcional: true,  cdEleicao: "6259", cdEleicaoT2: null,   uf: "pr" },
+    depestadual:  { codigo: "7", nome: "Deputado Estadual", vagas: 54, proporcional: true,  cdEleicao: "6259", cdEleicaoT2: null,   uf: "pr" }
   };
   let cargoAtivo = "depestadual";
+
+  // Vira true pro cargo certo (Presidente/Governador) no dia em que confirmar que teve 2º turno
+  // — aí a busca passa a usar cdEleicaoT2 em vez de cdEleicao. Ver função cdEleicaoAtual().
+  const TURNO2 = { presidente: false, governador: false };
+  function cdEleicaoAtual(cargoKey, cargo) {
+    return (TURNO2[cargoKey] && cargo.cdEleicaoT2) ? cargo.cdEleicaoT2 : cargo.cdEleicao;
+  }
 
   const PROXIES = [
     url => "https://proxy.corsfix.com/?" + url,
@@ -41,22 +59,29 @@
     url => "https://corsproxy.io/?url=" + encodeURIComponent(url)
   ];
 
-  function candidatosFilenames(cargo) {
-    const dir = `${AMBIENTE_BASE}/${CD_ELEICAO}/dados/${UF}`;
+  function candidatosFilenames(cargoKey, cargo) {
+    const cdEleicao = cdEleicaoAtual(cargoKey, cargo);
+    const dir = `${AMBIENTE_BASE}/${cdEleicao}/dados/${cargo.uf}`;
     const c4 = cargo.codigo.padStart(4, "0");
+    const cdPad = cdEleicao.padStart(9, "0");
     const nomes = [
-      `${UF}-c${c4}-e000006259-u.json`,
-      `${UF}-c${cargo.codigo}-e6259-u.json`,
-      `${UF}-c${c4}-e000006259-u.jws`
+      `${cargo.uf}-c${c4}-e${cdPad}-u.json`,
+      `${cargo.uf}-c${cargo.codigo}-e${cdEleicao}-u.json`,
+      `${cargo.uf}-c${c4}-e${cdPad}-u.jws`
     ];
     return nomes.map(n => `${dir}/${n}`);
   }
-  function municipioFilenames(codTse, cargo) {
-    const dir = `${AMBIENTE_BASE}/${CD_ELEICAO}/dados/${UF}`;
+  function municipioFilenames(codTse, cargoKey, cargo) {
+    // Município é sempre dentro do PR, mesmo pra Presidente (cujo resultado "oficial" que
+    // decide a eleição é o nacional, uf "br" — mas dá pra ver o recorte de um município do PR).
+    const UF_MUN = "pr";
+    const cdEleicao = cdEleicaoAtual(cargoKey, cargo);
+    const dir = `${AMBIENTE_BASE}/${cdEleicao}/dados/${UF_MUN}`;
     const c4 = cargo.codigo.padStart(4, "0");
+    const cdPad = cdEleicao.padStart(9, "0");
     const nomes = [
-      `${UF}${codTse}-c${c4}-e000006259-u.json`,
-      `${UF}${codTse}-c${cargo.codigo}-e6259-u.json`
+      `${UF_MUN}${codTse}-c${c4}-e${cdPad}-u.json`,
+      `${UF_MUN}${codTse}-c${cargo.codigo}-e${cdEleicao}-u.json`
     ];
     return nomes.map(n => `${dir}/${n}`);
   }
@@ -106,22 +131,25 @@
     return null;
   }
 
-  async function buscarResultadoEstado(cargo) {
-    const urlFixada = urlsEstadoQueFuncionam[cargo.codigo];
+  async function buscarResultadoEstado(cargoKey, cargo) {
+    // Chave inclui o cd_eleicao atual (não só o código do cargo) — se um dia virar 2º turno
+    // (TURNO2), o cd_eleicao muda e a URL fixada do 1º turno não vale mais pra essa chave nova.
+    const chaveCache = `${cargoKey}:${cdEleicaoAtual(cargoKey, cargo)}`;
+    const urlFixada = urlsEstadoQueFuncionam[chaveCache];
     if (urlFixada) {
       const json = await tentarUrl(urlFixada);
       if (json) return json;
-      delete urlsEstadoQueFuncionam[cargo.codigo]; // parou de funcionar — tenta descobrir de novo
+      delete urlsEstadoQueFuncionam[chaveCache]; // parou de funcionar — tenta descobrir de novo
     }
-    for (const url of candidatosFilenames(cargo)) {
+    for (const url of candidatosFilenames(cargoKey, cargo)) {
       const json = await tentarUrl(url);
-      if (json) { urlsEstadoQueFuncionam[cargo.codigo] = url; return json; }
+      if (json) { urlsEstadoQueFuncionam[chaveCache] = url; return json; }
     }
     return null;
   }
 
-  async function buscarResultadoMunicipio(codTse, cargo) {
-    const urls = municipioFilenames(codTse, cargo);
+  async function buscarResultadoMunicipio(codTse, cargoKey, cargo) {
+    const urls = municipioFilenames(codTse, cargoKey, cargo);
     for (const url of urls) {
       const json = await tentarUrl(url);
       if (json) return json;
@@ -325,7 +353,7 @@
     $("#btn-ap-atualizar").disabled = true;
     let json = null, erro = null;
     try {
-      json = await buscarResultadoEstado(cargo);
+      json = await buscarResultadoEstado(cargoKey, cargo);
       if (!json) erro = "não encontrei o arquivo de resultado ainda";
       else ultimoResultado = json;
     } catch (e) {
@@ -385,7 +413,7 @@
     det.innerHTML = '<div class="vazio">Buscando apuração de ' + esc(m.nome) + '...</div>';
     const codTse = getMunByIbge()[id];
     if (!codTse) { det.innerHTML = '<div class="vazio">Não encontrei o código TSE deste município.</div>'; return; }
-    const json = await buscarResultadoMunicipio(codTse, CARGOS[cargoAtivo]);
+    const json = await buscarResultadoMunicipio(codTse, cargoAtivo, CARGOS[cargoAtivo]);
     if (!json) { det.innerHTML = '<div class="vazio">Apuração de ' + esc(m.nome) + ' ainda não disponível.</div>'; return; }
     const candidatos = extrairCandidatos(json).sort((a, b) => b.votos - a.votos).slice(0, 15);
     const pct = extrairPercentualApurado(json);
