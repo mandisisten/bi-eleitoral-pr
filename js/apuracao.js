@@ -134,12 +134,32 @@
     if (!json) return [];
     const lista = json.cand || json.candidatos || (json.agr && json.agr.flatMap(a => a.cand || [])) || [];
     return lista.map(c => ({
-      numero: c.n ?? c.nr ?? c.numero ?? "",
+      numero: String(c.n ?? c.nr ?? c.numero ?? ""),
       nome: c.nm ?? c.nmu ?? c.nome ?? "(sem nome)",
       partido: c.sg ?? c.partido ?? (c.ele && c.ele.sg) ?? "",
       votos: Number(c.vap ?? c.votos ?? c.v ?? 0),
       situacao: c.st ?? c.situacao ?? c.sit ?? ""
     })).filter(c => c.votos >= 0);
+  }
+
+  /* Nomes/números/partidos oficiais (registro de candidaturas do TSE, roster-candidatos-2026.js)
+     — carregados ANTES da apuração começar, pra já mostrar quem concorre em cada cargo mesmo
+     sem nenhum voto apurado ainda. Conforme a apuração real chega (por número do candidato),
+     os votos vão sendo sobrepostos em cima desse roster; nunca o contrário. */
+  function candidatosDoRoster(cargoKey) {
+    const lista = (window.ROSTER_2026 && window.ROSTER_2026[cargoKey]) || [];
+    return lista.map(c => ({ numero: String(c.numero), nome: c.nome, partido: c.partido, votos: 0, situacao: "" }));
+  }
+  function mesclarComRoster(candidatosApi, cargoKey) {
+    const base = candidatosDoRoster(cargoKey);
+    if (!base.length) return candidatosApi; // sem roster pra esse cargo — usa só o que veio do TSE
+    const porNumero = {};
+    base.forEach(c => { porNumero[c.numero] = c; });
+    candidatosApi.forEach(c => {
+      if (porNumero[c.numero]) Object.assign(porNumero[c.numero], c);
+      else base.push(c); // candidato apurado que não bateu com o roster (raro) — inclui do mesmo jeito
+    });
+    return base;
   }
   function extrairPercentualApurado(json) {
     if (!json) return 0;
@@ -171,11 +191,13 @@
     const lista = Object.values(porPartido);
     lista.sort((a, b) => b.total - a.total);
 
-    if (!proporcional) {
+    if (!proporcional || totalGeral === 0) {
       // majoritário: não há "vaga por partido" de verdade — cada vaga é de um candidato.
-      // Mostramos aqui só o agregado por partido pra exibição; quem está "à frente" vem de renderCandidatos.
+      // totalGeral===0 (antes da apuração começar, só com o roster pré-carregado): não dá pra
+      // calcular quociente nem sobra com base em zero voto — sem isso o "maiores médias" atribuiria
+      // TODAS as sobras ao primeiro partido da lista (todo mundo empatado em 0), o que é falso.
       lista.forEach(p => { p.vagasTotal = 0; p.vagasQP = 0; p.vagasSobra = 0; });
-      return { lista, qe: 0, totalGeral, proporcional: false };
+      return { lista, qe: 0, totalGeral, proporcional };
     }
 
     const qe = vagas > 0 ? Math.max(1, Math.floor(totalGeral / vagas)) : 1;
@@ -224,7 +246,7 @@
     const aviso = $("#ap-aviso-config");
     if (erro) {
       aviso.style.display = "block";
-      $("#ap-aviso-config-texto").innerHTML = `<b>⚠️ Ainda não consegui buscar os dados.</b> Normal antes do início oficial da apuração (domingo, a partir das 17h). Se já passou desse horário e continuar assim, me avise — é só ajustar o nome do arquivo no código.<br><span style="color:var(--tx3);font-size:11px">${esc(erro)}</span>`;
+      $("#ap-aviso-config-texto").innerHTML = `<b>⚠️ A apuração oficial ainda não começou.</b> Os candidatos abaixo já são os registrados oficialmente no TSE — os votos aparecem automaticamente aqui assim que a contagem for aberta (domingo, a partir das 17h). Se já passou desse horário e continuar assim, me avise — é só ajustar o nome do arquivo no código.<br><span style="color:var(--tx3);font-size:11px">${esc(erro)}</span>`;
     } else if (!pct) {
       aviso.style.display = "block";
       $("#ap-aviso-config-texto").innerHTML = `<b>Conectado ao TSE, mas a apuração ainda não começou</b> (0% das seções totalizadas). Essa página atualiza sozinha.`;
@@ -232,19 +254,19 @@
       aviso.style.display = "none";
     }
     $("#ap-status-texto").innerHTML = erro
-      ? `Sem dados no momento.`
+      ? `Candidatos carregados — aguardando início da apuração.`
       : `<b>${pct.toFixed(1).replace(".", ",")}%</b> das seções apuradas — ${CARGOS[cargoAtivo].nome}/PR`;
   }
 
   function renderKpis(candidatos, totalGeral, cargo) {
     const eleitos = candidatos.filter(c => /ELEITO/.test(c.situacao || "")).length;
-    const liderA = [...candidatos].sort((a, b) => b.votos - a.votos)[0];
+    const liderA = totalGeral > 0 ? [...candidatos].sort((a, b) => b.votos - a.votos)[0] : null;
     $("#ap-kpis").innerHTML = `
       <div class="card-kpi destaque"><div class="rotulo">Votos apurados (${esc(cargo.nome)})</div><div class="valor">${fmtN(totalGeral)}</div></div>
       <div class="card-kpi"><div class="rotulo">Candidatos no pleito</div><div class="valor">${candidatos.length}</div></div>
       <div class="card-kpi"><div class="rotulo">${cargo.proporcional ? "Eleitos confirmados" : "Vaga(s) em disputa"}</div><div class="valor">${cargo.proporcional ? eleitos : cargo.vagas} <span style="font-size:13px;color:var(--tx3)">${cargo.proporcional ? "/ " + cargo.vagas : ""}</span></div></div>
       <div class="card-kpi"><div class="rotulo">Mais votado no momento</div><div class="valor" style="font-size:16px">${liderA ? esc(liderA.nome) : "—"}</div>
-        <div class="extra">${liderA ? fmtN(liderA.votos) + " votos (" + esc(liderA.partido) + ")" : ""}</div></div>`;
+        <div class="extra">${liderA ? fmtN(liderA.votos) + " votos (" + esc(liderA.partido) + ")" : "Aguardando apuração"}</div></div>`;
   }
 
   function renderPartidos(projecao) {
@@ -265,39 +287,53 @@
   }
 
   function renderCandidatos(candidatos, cargo) {
+    const totalGeral = candidatos.reduce((a, c) => a + c.votos, 0);
     const top = [...candidatos].sort((a, b) => b.votos - a.votos).slice(0, 20);
+    $("#ap-candidatos-titulo").textContent = totalGeral > 0 ? "Candidatos mais votados" : "Candidatos registrados (ordem alfabética — aguardando votos)";
     $("#ap-candidatos").innerHTML = top.length ? top.map((c, i) => `
       <div class="ap-cand-row">
         <div class="ap-cand-rank">${i + 1}º</div>
-        <div class="ap-cand-nome"><b>${esc(c.nome)}</b><span>${esc(c.partido)}${c.situacao ? " · " + esc(c.situacao) : (i < cargo.vagas && !cargo.proporcional ? " · eleito(a) no momento" : "")}</span></div>
+        <div class="ap-cand-nome"><b>${esc(c.nome)}</b><span>${esc(c.partido)}${c.situacao ? " · " + esc(c.situacao) : (totalGeral > 0 && i < cargo.vagas && !cargo.proporcional ? " · eleito(a) no momento" : "")}</span></div>
         <div class="ap-cand-votos"><b>${fmtN(c.votos)}</b></div>
-      </div>`).join("") : '<div class="vazio">Aguardando votos apurados.</div>';
+      </div>`).join("") : '<div class="vazio">Nenhum candidato registrado para esse cargo ainda.</div>';
   }
 
   async function atualizar() {
     if (buscando) return;
     buscando = true;
-    const cargo = CARGOS[cargoAtivo];
+    // Captura o cargo ATIVO NESTE MOMENTO — se o usuário trocar de aba enquanto esse
+    // fetch ainda está em voo (proxy lento), não queremos misturar o cabeçalho de um
+    // cargo com a lista de candidatos de outro quando a resposta finalmente chegar.
+    const cargoKey = cargoAtivo;
+    const cargo = CARGOS[cargoKey];
     $("#ap-status-texto").innerHTML = `<b>Buscando...</b>`;
     $("#btn-ap-atualizar").disabled = true;
+    let json = null, erro = null;
     try {
-      const json = await buscarResultadoEstado(cargo);
-      if (!json) { renderStatus(null, "não encontrei o arquivo de resultado ainda"); }
-      else {
-        ultimoResultado = json;
-        const candidatos = extrairCandidatos(json);
-        const totalGeral = extrairTotalVotos(json);
-        const projecao = calcularProjecaoVagas(candidatos, cargo.vagas, cargo.proporcional);
-        renderStatus(json, null);
-        renderKpis(candidatos, totalGeral, cargo);
-        renderPartidos(projecao);
-        renderCandidatos(candidatos, cargo);
-      }
+      json = await buscarResultadoEstado(cargo);
+      if (!json) erro = "não encontrei o arquivo de resultado ainda";
+      else ultimoResultado = json;
     } catch (e) {
-      renderStatus(null, e.message);
+      erro = e.message;
     }
     buscando = false;
     $("#btn-ap-atualizar").disabled = false;
+    if (cargoAtivo !== cargoKey) {
+      // o usuário trocou de aba durante essa busca — descarta esse resultado (seria do
+      // cargo errado) e refaz a busca já para a aba que está realmente selecionada agora.
+      atualizar();
+      return;
+    }
+    // Mesmo sem resultado (antes da apuração começar), já mostra os candidatos
+    // oficialmente registrados (roster-candidatos-2026.js) com 0 voto — assim que
+    // o TSE começar a publicar, os votos reais vão sendo sobrepostos por número.
+    const candidatos = mesclarComRoster(json ? extrairCandidatos(json) : [], cargoKey);
+    const totalGeral = candidatos.reduce((a, c) => a + c.votos, 0);
+    const projecao = calcularProjecaoVagas(candidatos, cargo.vagas, cargo.proporcional);
+    renderStatus(json, erro);
+    renderKpis(candidatos, totalGeral, cargo);
+    renderPartidos(projecao);
+    renderCandidatos(candidatos, cargo);
   }
 
   function trocarCargo(id) {
