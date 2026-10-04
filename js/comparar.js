@@ -28,6 +28,7 @@
   const fmtN = n => new Intl.NumberFormat("pt-BR").format(Math.round(n || 0));
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const numInt = v => Number(String(v ?? "").replace(/\D/g, "")) || 0;
+  const fmtPct = n => (Number(n) || 0).toFixed(2).replace(".", ",") + "%";
   const numBR = v => { const n = Number(String(v ?? "").replace(/\./g, "").replace(",", ".")); return isFinite(n) ? n : 0; };
 
   /* ---------- Acesso ao TSE ---------- */
@@ -58,7 +59,7 @@
     const out = [];
     const carg = json && json.carg && json.carg[0];
     ((carg && carg.agr) || []).forEach(agr => (agr.par || []).forEach(par => (par.cand || []).forEach(c => {
-      out.push({ numero: String(c.n), nome: c.nmu || c.nm || "?", partido: par.sg || "", votos: numInt(c.vap) });
+      out.push({ numero: String(c.n), nome: c.nmu || c.nm || "?", partido: par.sg || "", votos: numInt(c.vap), pct: numBR(c.pvap) });
     })));
     return out;
   }
@@ -90,7 +91,7 @@
     const d = (porCargo[cargoKey] || {}).mun || {};
     const m = d[TSE_POR_IBGE[ibge]];
     if (!m) return null;
-    return { a: m.votos[numA] || 0, b: m.votos[numB] || 0 };
+    return { a: m.votos[numA] || 0, b: m.votos[numB] || 0, pa: (m.pcts && m.pcts[numA]) || 0, pb: (m.pcts && m.pcts[numB]) || 0 };
   }
   function corMargem(escala, margem) {
     return margem >= .6 ? escala[5] : margem >= .4 ? escala[4] : margem >= .25 ? escala[3] : margem >= .1 ? escala[2] : escala[1];
@@ -108,7 +109,8 @@
     const pct = ab ? `<br><span style="opacity:.7">${ab.pst.toFixed(1).replace(".", ",")}% das seções apuradas</span>` : "";
     const a = cand(numA), b = cand(numB), v = votosMun(ibge);
     if (!a || !b) return `<b>${esc(nome)}</b>${pct}`;
-    return `<b>${esc(nome)}</b><br>${esc(a.nome)}: ${fmtN(v ? v.a : 0)}<br>${esc(b.nome)}: ${fmtN(v ? v.b : 0)}${pct}`;
+    const tem = v && (v.a || v.b);
+    return `<b>${esc(nome)}</b><br>${esc(a.nome)}: ${fmtN(v ? v.a : 0)}${tem ? " (" + fmtPct(v.pa) + ")" : ""}<br>${esc(b.nome)}: ${fmtN(v ? v.b : 0)}${tem ? " (" + fmtPct(v.pb) + ")" : ""}${pct}`;
   }
   async function iniciarMapa() {
     const g = await carregarGeo();
@@ -152,21 +154,22 @@
       if (!a || !b) return;
       const va = m.votos[numA] || 0, vb = m.votos[numB] || 0;
       if (!va && !vb) return;
+      const pa = (m.pcts && m.pcts[numA]) || 0, pb = (m.pcts && m.pcts[numB]) || 0;
       const nome = (MUNI_BY_ID[IBGE_POR_TSE[cod]] || {}).nome || cod;
-      if (va > vb) { ganhaA++; linhasA.push({ nome, va, vb }); } else if (vb > va) { ganhaB++; linhasB.push({ nome, va, vb }); } else empate++;
+      if (va > vb) { ganhaA++; linhasA.push({ nome, va, vb, pa, pb }); } else if (vb > va) { ganhaB++; linhasB.push({ nome, va, vb, pa, pb }); } else empate++;
     });
     const codsMun = Object.keys(dc.ab || {}).filter(c => IBGE_POR_TSE[c]);
     const comDados = codsMun.filter(c => dc.ab[c].st > 0).length;
     const pctEstado = dc.estado && dc.estado.s ? numBR(dc.estado.s.pst) : 0;
     $("#cmp-cards").innerHTML = `
-      <div class="card-kpi destaque"><div class="rotulo">${a ? esc(a.nome) : "Candidato A"}</div><div class="valor" style="color:#60a5fa">${fmtN(totA)}</div><div class="extra">${a ? esc(a.partido) : "—"} · votos no estado</div></div>
-      <div class="card-kpi destaque" style="border-color:#f97316"><div class="rotulo">${b ? esc(b.nome) : "Candidato B"}</div><div class="valor" style="color:#f97316">${fmtN(totB)}</div><div class="extra">${b ? esc(b.partido) : "—"} · votos no estado</div></div>
+      <div class="card-kpi destaque"><div class="rotulo">${a ? esc(a.nome) : "Candidato A"}</div><div class="valor" style="color:#60a5fa">${fmtN(totA)}</div><div class="extra">${a ? esc(a.partido) + (totA ? " · " + fmtPct(a.pct) + " dos válidos" : "") : "—"} · votos no estado</div></div>
+      <div class="card-kpi destaque" style="border-color:#f97316"><div class="rotulo">${b ? esc(b.nome) : "Candidato B"}</div><div class="valor" style="color:#f97316">${fmtN(totB)}</div><div class="extra">${b ? esc(b.partido) + (totB ? " · " + fmtPct(b.pct) + " dos válidos" : "") : "—"} · votos no estado</div></div>
       <div class="card-kpi"><div class="rotulo">Municípios na frente</div><div class="valor"><span style="color:#60a5fa">${ganhaA}</span> <span style="color:var(--tx3);font-size:14px">×</span> <span style="color:#f97316">${ganhaB}</span></div><div class="extra">${empate ? empate + " empate(s) · " : ""}A × B</div></div>
       <div class="card-kpi"><div class="rotulo">Apuração</div><div class="valor">${pctEstado.toFixed(1).replace(".", ",")}%</div><div class="extra">${comDados} de ${codsMun.length || 399} municípios com seções totalizadas</div></div>`;
     const tab = (lista, chave, cor) => lista.length
       ? `<table class="tab"><thead><tr><th>#</th><th>Município</th><th class="num">${esc(a ? a.nome : "A")}</th><th class="num">${esc(b ? b.nome : "B")}</th></tr></thead><tbody>${
         lista.sort((x, y) => (y[chave] - y[chave === "va" ? "vb" : "va"]) - (x[chave] - x[chave === "va" ? "vb" : "va"])).slice(0, 10)
-          .map((l, i) => `<tr><td data-label="#">${i + 1}º</td><td data-label="Município"><b>${esc(l.nome)}</b></td><td class="num" data-label="${esc(a ? a.nome : "A")}" style="${chave === "va" ? "color:" + cor + ";font-weight:700" : ""}">${fmtN(l.va)}</td><td class="num" data-label="${esc(b ? b.nome : "B")}" style="${chave === "vb" ? "color:" + cor + ";font-weight:700" : ""}">${fmtN(l.vb)}</td></tr>`).join("")}</tbody></table>`
+          .map((l, i) => `<tr><td data-label="#">${i + 1}º</td><td data-label="Município"><b>${esc(l.nome)}</b></td><td class="num" data-label="${esc(a ? a.nome : "A")}" style="${chave === "va" ? "color:" + cor + ";font-weight:700" : ""}">${fmtN(l.va)} <small style="opacity:.7">${fmtPct(l.pa)}</small></td><td class="num" data-label="${esc(b ? b.nome : "B")}" style="${chave === "vb" ? "color:" + cor + ";font-weight:700" : ""}">${fmtN(l.vb)} <small style="opacity:.7">${fmtPct(l.pb)}</small></td></tr>`).join("")}</tbody></table>`
       : '<div class="vazio">Nenhum município ainda.</div>';
     $("#cmp-top-a").innerHTML = tab(linhasA, "va", "#60a5fa");
     $("#cmp-top-b").innerHTML = tab(linhasB, "vb", "#f97316");
@@ -212,9 +215,9 @@
       await pool(fila, 14, async cod => {
         const r = await buscar(urlMun(k, cod));
         if (r.json) {
-          const votos = {};
-          candidatosDe(r.json).forEach(c => { votos[c.numero] = c.votos; });
-          dc.mun[cod] = { st: dc.ab[cod].st, votos };
+          const votos = {}, pcts = {};
+          candidatosDe(r.json).forEach(c => { votos[c.numero] = c.votos; pcts[c.numero] = c.pct; });
+          dc.mun[cod] = { st: dc.ab[cod].st, votos, pcts };
         } else falhas++;
         feitos++;
         if (minha === gen && (feitos - ultimaPintura >= 25 || feitos === fila.length)) { ultimaPintura = feitos; status(`Carregando votos dos municípios… ${feitos}/${fila.length}`); pintar(); }

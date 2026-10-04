@@ -109,6 +109,7 @@
      json.s.pst                    % de seções totalizadas ("12,34" — vírgula decimal)
      json.v.vv                     votos válidos; json.carg[0].qe quociente eleitoral; json.dg/hg data/hora do arquivo */
   const numInt = v => Number(String(v ?? "").replace(/\D/g, "")) || 0;
+  const fmtPct = n => (Number(n) || 0).toFixed(2).replace(".", ",") + "%";
   const numBR = v => { const n = Number(String(v ?? "").replace(/\./g, "").replace(",", ".")); return isFinite(n) ? n : 0; };
 
   function extrairAgrs(json) {
@@ -129,6 +130,7 @@
             partido: par.sg || "",
             agrupamento: agr.com || par.sg || "",
             votos: numInt(c.vap),
+            pct: numBR(c.pvap),
             eleito,
             situacao: eleito ? (st || "Eleito") : (/turno/i.test(st) ? st : ""),
             vice: vice ? (vice.nmu || vice.nm || "") : ""
@@ -144,7 +146,7 @@
      arquivo do TSE em mãos, a lista vem inteira dele (já traz todos os candidatos, mesmo com 0 voto). */
   function candidatosDoRoster(cargoKey) {
     const lista = (window.ROSTER_2026 && window.ROSTER_2026[cargoKey]) || [];
-    return lista.map(c => ({ numero: String(c.numero), nome: c.nome, partido: c.partido, agrupamento: c.partido, votos: 0, eleito: false, situacao: "", vice: "" }));
+    return lista.map(c => ({ numero: String(c.numero), nome: c.nome, partido: c.partido, agrupamento: c.partido, votos: 0, pct: 0, eleito: false, situacao: "", vice: "" }));
   }
   function candidatosDoCargo(json, cargoKey) {
     const doTSE = extrairCandidatos(json);
@@ -277,7 +279,7 @@
       <div class="card-kpi"><div class="rotulo">Candidatos no pleito</div><div class="valor">${candidatos.length}</div></div>
       <div class="card-kpi"><div class="rotulo">${cargo.proporcional ? "Eleitos confirmados" : "Vaga(s) em disputa"}</div><div class="valor">${cargo.proporcional ? eleitos : cargo.vagas} <span style="font-size:13px;color:var(--tx3)">${cargo.proporcional ? "/ " + cargo.vagas : ""}</span></div></div>
       <div class="card-kpi"><div class="rotulo">Mais votado no momento</div><div class="valor" style="font-size:16px">${liderA ? esc(liderA.nome) : "—"}</div>
-        <div class="extra">${liderA ? fmtN(liderA.votos) + " votos (" + esc(liderA.partido) + ")" : "Aguardando apuração"}</div></div>`;
+        <div class="extra">${liderA ? fmtN(liderA.votos) + " votos · " + fmtPct(liderA.pct) + " (" + esc(liderA.partido) + ")" : "Aguardando apuração"}</div></div>`;
   }
 
   function renderPartidos(projecao) {
@@ -295,7 +297,7 @@
       return `<div class="ap-partido-row">
         <div class="ap-partido-sigla" style="color:${cor}">${esc(p.partido)}</div>
         <div class="ap-partido-bar"><div style="width:${pct}%;background:${cor}"></div></div>
-        <div class="ap-partido-vagas">${vagasTxt}${eleitosTxt}${fmtN(p.total)} votos${legendaTxt}</div>
+        <div class="ap-partido-vagas">${vagasTxt}${eleitosTxt}${fmtN(p.total)} votos${projecao.totalGeral > 0 ? " · " + fmtPct(p.total / projecao.totalGeral * 100) : ""}${legendaTxt}</div>
       </div>`;
     }).join("") : '<div class="vazio">Aguardando votos apurados.</div>';
   }
@@ -316,7 +318,7 @@
       <div class="ap-cand-row">
         <div class="ap-cand-rank">${i + 1}º</div>
         <div class="ap-cand-nome"><b>${esc(c.nome)}</b><span>${esc(c.partido)}${c.vice ? " · vice " + esc(c.vice) : ""}${c.situacao ? " · " + esc(c.situacao) : (totalGeral > 0 && i < cargo.vagas && !cargo.proporcional ? " · na frente" : "")}</span></div>
-        <div class="ap-cand-votos"><b>${fmtN(c.votos)}</b></div>
+        <div class="ap-cand-votos"><b>${fmtN(c.votos)}</b>${totalGeral > 0 ? `<span>${fmtPct(c.pct)}</span>` : ""}</div>
       </div>`).join("") : `<div class="vazio">${partidoFiltro ? "Esse partido não tem candidato registrado nesse cargo." : "Nenhum candidato registrado para esse cargo ainda."}</div>`;
   }
 
@@ -463,8 +465,8 @@
         const pct = extrairPercentualApurado(json);
         return `<div style="margin-bottom:16px">
           <div style="font-weight:600;margin-bottom:6px">${esc(cargo.nome)} <span style="font-size:11px;color:var(--tx3);font-weight:400">— ${pct.toFixed(1).replace(".", ",")}% apurado</span></div>
-          ${candidatos.length && temVotos ? `<table class="tab"><thead><tr><th>#</th><th>Candidato</th><th>Partido</th><th class="num">Votos</th></tr></thead><tbody>
-            ${candidatos.map((c, i) => `<tr><td>${i + 1}º</td><td><b>${esc(c.nome)}</b></td><td>${esc(c.partido)}</td><td class="num">${fmtN(c.votos)}</td></tr>`).join("")}
+          ${candidatos.length && temVotos ? `<table class="tab"><thead><tr><th>#</th><th>Candidato</th><th>Partido</th><th class="num">Votos</th><th class="num">%</th></tr></thead><tbody>
+            ${candidatos.map((c, i) => `<tr><td>${i + 1}º</td><td><b>${esc(c.nome)}</b></td><td>${esc(c.partido)}</td><td class="num">${fmtN(c.votos)}</td><td class="num">${fmtPct(c.pct)}</td></tr>`).join("")}
             </tbody></table>` : '<div class="vazio">A apuração ainda não começou neste município.</div>'}
         </div>`;
       }).join("");
