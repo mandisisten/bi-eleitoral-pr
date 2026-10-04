@@ -53,165 +53,114 @@
     return (TURNO2[cargoKey] && cargo.cdEleicaoT2) ? cargo.cdEleicaoT2 : cargo.cdEleicao;
   }
 
-  const PROXIES = [
-    url => "https://proxy.corsfix.com/?" + url,
-    url => "https://api.allorigins.win/raw?url=" + encodeURIComponent(url),
-    url => "https://corsproxy.io/?url=" + encodeURIComponent(url)
-  ];
-
-  function candidatosFilenames(cargoKey, cargo) {
-    const cdEleicao = cdEleicaoAtual(cargoKey, cargo);
-    const dir = `${AMBIENTE_BASE}/${cdEleicao}/dados/${cargo.uf}`;
-    const c4 = cargo.codigo.padStart(4, "0");
-    const cdPad = cdEleicao.padStart(9, "0");
-    const nomes = [
-      `${cargo.uf}-c${c4}-e${cdPad}-u.json`,
-      `${cargo.uf}-c${cargo.codigo}-e${cdEleicao}-u.json`,
-      `${cargo.uf}-c${c4}-e${cdPad}-u.jws`
-    ];
-    return nomes.map(n => `${dir}/${n}`);
+  /* CONFIRMADO em 04/10/2026 olhando as requisições reais do app oficial do TSE:
+       <base>/<cd_eleicao>/dados/<uf>/<uf>-c<cargo 4 díg>-e<cd_eleicao 6 díg>-u.jws
+       <base>/<cd_eleicao>/dados/pr/pr<município TSE 5 díg>-c<cargo 4 díg>-e<cd_eleicao 6 díg>-u.jws
+     (cd_eleicao com 6 dígitos — "e006257" — e extensão .jws, JSON assinado.)
+     O TSE responde com CORS liberado (Access-Control-Allow-Origin ecoa a origem, inclusive
+     pré-voo e 404), então o navegador busca DIRETO — sem proxy. */
+  function urlResultadoEstado(cargoKey, cargo) {
+    const cd = cdEleicaoAtual(cargoKey, cargo);
+    return `${AMBIENTE_BASE}/${cd}/dados/${cargo.uf}/${cargo.uf}-c${cargo.codigo.padStart(4, "0")}-e${cd.padStart(6, "0")}-u.jws`;
   }
-  function municipioFilenames(codTse, cargoKey, cargo) {
-    // Município é sempre dentro do PR, mesmo pra Presidente (cujo resultado "oficial" que
-    // decide a eleição é o nacional, uf "br" — mas dá pra ver o recorte de um município do PR).
-    const UF_MUN = "pr";
-    const cdEleicao = cdEleicaoAtual(cargoKey, cargo);
-    const dir = `${AMBIENTE_BASE}/${cdEleicao}/dados/${UF_MUN}`;
-    const c4 = cargo.codigo.padStart(4, "0");
-    const cdPad = cdEleicao.padStart(9, "0");
-    const nomes = [
-      `${UF_MUN}${codTse}-c${c4}-e${cdPad}-u.json`,
-      `${UF_MUN}${codTse}-c${cargo.codigo}-e${cdEleicao}-u.json`
-    ];
-    return nomes.map(n => `${dir}/${n}`);
+  function urlResultadoMunicipio(codTse, cargoKey, cargo) {
+    // Município é sempre dentro do PR, mesmo pra Presidente (o resultado que decide a eleição é
+    // o nacional, uf "br" — mas dá pra ver o recorte de um município do PR).
+    const cd = cdEleicaoAtual(cargoKey, cargo);
+    return `${AMBIENTE_BASE}/${cd}/dados/pr/pr${codTse}-c${cargo.codigo.padStart(4, "0")}-e${cd.padStart(6, "0")}-u.jws`;
   }
-
-  let proxyPreferido = 0;       // índice do proxy que funcionou da última vez — tenta ele primeiro
-  let urlsEstadoQueFuncionam = {}; // por cargo: fixa a URL certa assim que acha, pra não ficar testando toda hora
 
   function decodeJWS(texto) {
-    // Config files vêm assinados (JOSE/JWS compacto: header.payload.sig) — já os
-    // dados "-u.json" podem vir em JSON puro. Detecta e decodifica os dois casos.
+    // JWS compacto (header.payload.assinatura, base64url). Só lemos o payload; o texto vem em
+    // UTF-8, então decodifica os bytes (atob sozinho estragaria os acentos: "FEDERAÇÃO").
     const t = texto.trim();
-    if (t.startsWith("{") || t.startsWith("[")) {
-      return JSON.parse(t);
-    }
+    if (t.startsWith("{") || t.startsWith("[")) return JSON.parse(t);
     const partes = t.split(".");
-    if (partes.length >= 2) {
-      let payload = partes[1].replace(/-/g, "+").replace(/_/g, "/");
-      while (payload.length % 4) payload += "=";
-      const decoded = atob(payload);
-      return JSON.parse(decoded);
-    }
-    throw new Error("formato de resposta não reconhecido");
+    if (partes.length < 2) throw new Error("formato de resposta não reconhecido");
+    let payload = partes[1].replace(/-/g, "+").replace(/_/g, "/");
+    while (payload.length % 4) payload += "=";
+    const bytes = Uint8Array.from(atob(payload), c => c.charCodeAt(0));
+    return JSON.parse(new TextDecoder("utf-8").decode(bytes));
   }
 
-  async function fetchComTimeout(url, ms) {
+  // Devolve { json, erro } — erro é um texto curto pra mostrar na tela quando json é null.
+  async function buscarJsonTSE(url) {
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), ms);
+    const timer = setTimeout(() => ctrl.abort(), 15000);
     try {
-      return await fetch(url, { cache: "no-store", signal: ctrl.signal });
+      const resp = await fetch(url + "?nocache=" + Date.now(), { signal: ctrl.signal });
+      if (resp.status === 404) return { json: null, erro: "o TSE ainda não publicou esse arquivo" };
+      if (!resp.ok) return { json: null, erro: "o TSE respondeu HTTP " + resp.status };
+      return { json: decodeJWS(await resp.text()), erro: null };
+    } catch (e) {
+      return { json: null, erro: e.name === "AbortError" ? "o TSE demorou demais pra responder" : "falha de conexão com o TSE" };
     } finally {
       clearTimeout(timer);
     }
   }
 
-  async function tentarUrl(url) {
-    const ordemProxies = [proxyPreferido, ...PROXIES.map((_, i) => i).filter(i => i !== proxyPreferido)];
-    for (const i of ordemProxies) {
-      try {
-        const resp = await fetchComTimeout(PROXIES[i](url), 7000);
-        if (!resp.ok) continue;
-        const texto = await resp.text();
-        const json = decodeJWS(texto);
-        proxyPreferido = i;
-        return json;
-      } catch (e) { /* tenta o próximo proxy */ }
-    }
-    return null;
-  }
+  const buscarResultadoEstado = (cargoKey, cargo) => buscarJsonTSE(urlResultadoEstado(cargoKey, cargo));
+  const buscarResultadoMunicipio = (codTse, cargoKey, cargo) => buscarJsonTSE(urlResultadoMunicipio(codTse, cargoKey, cargo));
 
-  async function buscarResultadoEstado(cargoKey, cargo) {
-    // Chave inclui o cd_eleicao atual (não só o código do cargo) — se um dia virar 2º turno
-    // (TURNO2), o cd_eleicao muda e a URL fixada do 1º turno não vale mais pra essa chave nova.
-    const chaveCache = `${cargoKey}:${cdEleicaoAtual(cargoKey, cargo)}`;
-    const urlFixada = urlsEstadoQueFuncionam[chaveCache];
-    if (urlFixada) {
-      const json = await tentarUrl(urlFixada);
-      if (json) return json;
-      delete urlsEstadoQueFuncionam[chaveCache]; // parou de funcionar — tenta descobrir de novo
-    }
-    for (const url of candidatosFilenames(cargoKey, cargo)) {
-      const json = await tentarUrl(url);
-      if (json) { urlsEstadoQueFuncionam[chaveCache] = url; return json; }
-    }
-    return null;
-  }
+  /* ---------- Extração (esquema REAL do arquivo -u.jws, conferido em 04/10/2026) ----------
+     json.carg[0].agr[]            agremiação: partido isolado, federação ("com" = "PT/PC do B/PV") ou coligação
+       .par[]                      partidos da agremiação: n, sg (sigla), tvtn (votos nominais), tvtl (votos de legenda)
+         .cand[]                   candidatos: n (número), nmu (nome de urna), vap (votos), e ("s" = eleito), st (situação), vs[] (vice/suplentes)
+     json.s.pst                    % de seções totalizadas ("12,34" — vírgula decimal)
+     json.v.vv                     votos válidos; json.carg[0].qe quociente eleitoral; json.dg/hg data/hora do arquivo */
+  const numInt = v => Number(String(v ?? "").replace(/\D/g, "")) || 0;
+  const numBR = v => { const n = Number(String(v ?? "").replace(/\./g, "").replace(",", ".")); return isFinite(n) ? n : 0; };
 
-  async function buscarResultadoMunicipio(codTse, cargoKey, cargo) {
-    const urls = municipioFilenames(codTse, cargoKey, cargo);
-    for (const url of urls) {
-      const json = await tentarUrl(url);
-      if (json) return json;
-    }
-    return null;
+  function extrairAgrs(json) {
+    const carg = json && json.carg && json.carg[0];
+    return (carg && carg.agr) || [];
   }
-
-  /* ---------- Extração defensiva (nomes de campo do TSE podem variar) ---------- */
   function extrairCandidatos(json) {
-    if (!json) return [];
-    const lista = json.cand || json.candidatos || (json.agr && json.agr.flatMap(a => a.cand || [])) || [];
-    return lista.map(c => ({
-      numero: String(c.n ?? c.nr ?? c.numero ?? ""),
-      nome: c.nm ?? c.nmu ?? c.nome ?? "(sem nome)",
-      partido: c.sg ?? c.partido ?? (c.ele && c.ele.sg) ?? "",
-      votos: Number(c.vap ?? c.votos ?? c.v ?? 0),
-      situacao: c.st ?? c.situacao ?? c.sit ?? ""
-    })).filter(c => c.votos >= 0);
+    const out = [];
+    extrairAgrs(json).forEach(agr => {
+      (agr.par || []).forEach(par => {
+        (par.cand || []).forEach(c => {
+          const eleito = c.e === "s";
+          const st = String(c.st || "").trim();
+          const vice = (c.vs || []).find(x => x.tp === "v");
+          out.push({
+            numero: String(c.n ?? ""),
+            nome: c.nmu || c.nm || "(sem nome)",
+            partido: par.sg || "",
+            agrupamento: agr.com || par.sg || "",
+            votos: numInt(c.vap),
+            eleito,
+            situacao: eleito ? (st || "Eleito") : (/turno/i.test(st) ? st : ""),
+            vice: vice ? (vice.nmu || vice.nm || "") : ""
+          });
+        });
+      });
+    });
+    return out;
   }
 
-  /* Nomes/números/partidos oficiais (registro de candidaturas do TSE, roster-candidatos-2026.js)
-     — carregados ANTES da apuração começar, pra já mostrar quem concorre em cada cargo mesmo
-     sem nenhum voto apurado ainda. Conforme a apuração real chega (por número do candidato),
-     os votos vão sendo sobrepostos em cima desse roster; nunca o contrário. */
+  /* Candidatos do registro oficial do TSE (roster-candidatos-2026.js) — só serve de reserva
+     quando o arquivo de resultado não pôde ser baixado (assim a lista de nomes não some). Com o
+     arquivo do TSE em mãos, a lista vem inteira dele (já traz todos os candidatos, mesmo com 0 voto). */
   function candidatosDoRoster(cargoKey) {
     const lista = (window.ROSTER_2026 && window.ROSTER_2026[cargoKey]) || [];
-    return lista.map(c => ({ numero: String(c.numero), nome: c.nome, partido: c.partido, votos: 0, situacao: "" }));
+    return lista.map(c => ({ numero: String(c.numero), nome: c.nome, partido: c.partido, agrupamento: c.partido, votos: 0, eleito: false, situacao: "", vice: "" }));
   }
-  function mesclarComRoster(candidatosApi, cargoKey) {
-    const base = candidatosDoRoster(cargoKey);
-    if (!base.length) return candidatosApi; // sem roster pra esse cargo — usa só o que veio do TSE
-    const porNumero = {};
-    base.forEach(c => { porNumero[c.numero] = c; });
-    candidatosApi.forEach(c => {
-      if (porNumero[c.numero]) Object.assign(porNumero[c.numero], c);
-      else base.push(c); // candidato apurado que não bateu com o roster (raro) — inclui do mesmo jeito
-    });
-    return base;
+  function candidatosDoCargo(json, cargoKey) {
+    const doTSE = extrairCandidatos(json);
+    return doTSE.length ? doTSE : candidatosDoRoster(cargoKey);
   }
   function extrairPercentualApurado(json) {
-    if (!json) return 0;
-    const v = json.pst ?? json.pvap ?? json.pe ?? json.percentual ?? json.pap;
-    return v != null ? Number(v) : 0;
+    return json && json.s ? numBR(json.s.pst) : 0;
   }
-  function extrairTotalVotos(json) {
-    if (!json) return 0;
-    if (json.tvv != null) return Number(json.tvv);
-    const cands = extrairCandidatos(json);
-    return cands.reduce((a, c) => a + c.votos, 0);
-  }
-  /* Votos de legenda: eleitor que votou só no número do partido, sem escolher candidato —
-     contam pro total/quociente do partido mas não pertencem a nenhum candidato específico.
-     Igual ao resto da extração, o nome exato do campo não dá pra confirmar antes da apuração
-     abrir — tenta as variações mais plausíveis dentro de json.agr (agregado por partido). */
-  function extrairVotosLegendaPorPartido(json) {
-    if (!json || !json.agr) return {};
+  /* Votos de legenda (eleitor que digitou só o número do partido): contam pro total/quociente
+     da agremiação mas não pertencem a nenhum candidato. Vêm em par.tvtl, somados por agremiação. */
+  function extrairVotosLegendaPorAgrupamento(json) {
     const out = {};
-    json.agr.forEach(a => {
-      const sigla = a.sg ?? a.sigla ?? a.nm ?? "";
-      if (!sigla) return;
-      const legenda = Number(a.vl ?? a.vln ?? a.votoLegenda ?? a.votosLegenda ?? a.vlegenda ?? 0);
-      if (legenda) out[sigla] = (out[sigla] || 0) + legenda;
+    extrairAgrs(json).forEach(agr => {
+      const chave = agr.com || ((agr.par || [])[0] || {}).sg || "";
+      const legenda = (agr.par || []).reduce((a, p) => a + numInt(p.tvtl), 0);
+      if (chave && legenda) out[chave] = (out[chave] || 0) + legenda;
     });
     return out;
   }
@@ -226,12 +175,14 @@
   function calcularProjecaoVagas(candidatos, vagas, proporcional, votosLegendaPorPartido) {
     const porPartido = {};
     candidatos.forEach(c => {
-      const p = c.partido || "(sem partido)";
+      // Proporcional: a unidade do quociente é a agremiação (federação conta como UM partido só,
+      // ex. "PT/PC do B/PV"). Majoritário: agrupa pelo partido do candidato.
+      const p = (proporcional ? (c.agrupamento || c.partido) : c.partido) || "(sem partido)";
       if (!porPartido[p]) porPartido[p] = { partido: p, total: 0, votosNominais: 0, votosLegenda: 0, eleitos: 0, candidatos: [] };
       porPartido[p].total += c.votos;
       porPartido[p].votosNominais += c.votos;
       porPartido[p].candidatos.push(c);
-      if (/ELEITO/.test(c.situacao || "")) porPartido[p].eleitos++;
+      if (c.eleito) porPartido[p].eleitos++;
     });
     Object.entries(votosLegendaPorPartido || {}).forEach(([partido, votos]) => {
       if (!porPartido[partido]) porPartido[partido] = { partido, total: 0, votosNominais: 0, votosLegenda: 0, eleitos: 0, candidatos: [] };
@@ -251,7 +202,9 @@
       return { lista, qe: 0, totalGeral, proporcional };
     }
 
-    const qe = vagas > 0 ? Math.max(1, Math.floor(totalGeral / vagas)) : 1;
+    // Quociente eleitoral (CE art. 106): fração igual ou inferior a 0,5 é desprezada; superior a 0,5 vira 1.
+    const bruto = vagas > 0 ? totalGeral / vagas : 1;
+    const qe = Math.max(1, (bruto - Math.floor(bruto)) > 0.5 ? Math.ceil(bruto) : Math.floor(bruto));
     lista.forEach(p => { p.vagasQP = Math.floor(p.total / qe); });
     let sobras = Math.max(0, vagas - lista.reduce((a, p) => a + p.vagasQP, 0));
     for (let i = 0; i < sobras && lista.length; i++) {
@@ -268,8 +221,13 @@
 
   const CORES_FALLBACK = ["#3b82f6", "#22c55e", "#f59e0b", "#a78bfa", "#ef4444", "#06b6d4", "#ec4899", "#84cc16", "#f97316", "#64748b"];
   function corDoPartido(sigla, idx) {
-    if (window.corPartido) { const c = corPartido(sigla); if (c && c !== "#64748b") return c; }
+    const primeira = String(sigla).split("/")[0].trim(); // federação "PT/PC do B/PV" → cor do 1º partido
+    if (window.corPartido) { const c = corPartido(primeira); if (c && c !== "#64748b") return c; }
     return CORES_FALLBACK[idx % CORES_FALLBACK.length];
+  }
+  // Com voto: mais votados primeiro (empate por nome). Sem nenhum voto ainda: ordem alfabética.
+  function ordenarCandidatos(lista, temVotos) {
+    return [...lista].sort((a, b) => (temVotos ? b.votos - a.votos : 0) || a.nome.localeCompare(b.nome, "pt-BR"));
   }
 
   /* ---------- Estado ---------- */
@@ -292,28 +250,30 @@
     $("#ap-pct-fill").style.width = Math.min(100, pct) + "%";
     $("#ap-pct-valor").textContent = pct.toFixed(1).replace(".", ",") + "%";
     const agora = new Date().toLocaleTimeString("pt-BR");
-    $("#ap-ultima-att").textContent = erro ? `Última tentativa: ${agora} (sem sucesso)` : `Atualizado às ${agora}`;
+    const geradoTSE = json && json.dg ? ` · arquivo do TSE de ${json.dg.slice(0, 5)} ${json.hg}` : "";
+    $("#ap-ultima-att").textContent = erro ? `Última tentativa: ${agora} (sem sucesso)` : `Atualizado às ${agora}${geradoTSE}`;
 
     const aviso = $("#ap-aviso-config");
     if (erro) {
       aviso.style.display = "block";
-      $("#ap-aviso-config-texto").innerHTML = `<b>⚠️ A apuração oficial ainda não começou.</b> Os candidatos abaixo já são os registrados oficialmente no TSE — os votos aparecem automaticamente aqui assim que a contagem for aberta (domingo, a partir das 17h). Se já passou desse horário e continuar assim, me avise — é só ajustar o nome do arquivo no código.<br><span style="color:var(--tx3);font-size:11px">${esc(erro)}</span>`;
+      $("#ap-aviso-config-texto").innerHTML = `<b>⚠️ Não foi possível carregar os dados do TSE agora</b> (${esc(erro)}). Os candidatos abaixo são os registrados oficialmente; a página tenta de novo sozinha a cada 30 segundos.`;
     } else if (!pct) {
       aviso.style.display = "block";
-      $("#ap-aviso-config-texto").innerHTML = `<b>Conectado ao TSE, mas a apuração ainda não começou</b> (0% das seções totalizadas). Essa página atualiza sozinha.`;
+      $("#ap-aviso-config-texto").innerHTML = `<b>Conectado ao TSE — a apuração ainda não começou</b> (0% das seções totalizadas). O TSE só libera os resultados depois que a votação termina em todo o país, inclusive as urnas no exterior; assim que liberar, os números aparecem aqui sozinhos.`;
     } else {
       aviso.style.display = "none";
     }
+    const cargo = CARGOS[cargoAtivo];
     $("#ap-status-texto").innerHTML = erro
-      ? `Candidatos carregados — aguardando início da apuração.`
-      : `<b>${pct.toFixed(1).replace(".", ",")}%</b> das seções apuradas — ${CARGOS[cargoAtivo].nome}/PR`;
+      ? (json ? `Sem conexão agora — mostrando os últimos dados recebidos do TSE.` : `Candidatos carregados — sem conexão com o TSE no momento.`)
+      : `<b>${pct.toFixed(1).replace(".", ",")}%</b> das seções totalizadas — ${cargo.nome}/${cargo.uf.toUpperCase()}`;
   }
 
   function renderKpis(candidatos, totalGeral, cargo) {
-    const eleitos = candidatos.filter(c => /ELEITO/.test(c.situacao || "")).length;
+    const eleitos = candidatos.filter(c => c.eleito).length;
     const liderA = totalGeral > 0 ? [...candidatos].sort((a, b) => b.votos - a.votos)[0] : null;
     $("#ap-kpis").innerHTML = `
-      <div class="card-kpi destaque"><div class="rotulo">Votos apurados (${esc(cargo.nome)})</div><div class="valor">${fmtN(totalGeral)}</div></div>
+      <div class="card-kpi destaque"><div class="rotulo">Votos válidos (${esc(cargo.nome)})</div><div class="valor">${fmtN(totalGeral)}</div></div>
       <div class="card-kpi"><div class="rotulo">Candidatos no pleito</div><div class="valor">${candidatos.length}</div></div>
       <div class="card-kpi"><div class="rotulo">${cargo.proporcional ? "Eleitos confirmados" : "Vaga(s) em disputa"}</div><div class="valor">${cargo.proporcional ? eleitos : cargo.vagas} <span style="font-size:13px;color:var(--tx3)">${cargo.proporcional ? "/ " + cargo.vagas : ""}</span></div></div>
       <div class="card-kpi"><div class="rotulo">Mais votado no momento</div><div class="valor" style="font-size:16px">${liderA ? esc(liderA.nome) : "—"}</div>
@@ -345,14 +305,14 @@
     const filtrados = partidoFiltro ? candidatos.filter(c => c.partido === partidoFiltro) : candidatos;
     // Sem filtro, lista é só uma amostra (top 20) — com um partido escolhido, mostra a chapa
     // inteira dele (pode passar de 20 em Dep. Federal/Estadual com federação grande).
-    const ordenados = [...filtrados].sort((a, b) => b.votos - a.votos);
+    const ordenados = ordenarCandidatos(filtrados, totalGeral > 0);
     const top = partidoFiltro ? ordenados : ordenados.slice(0, 20);
     const sufixoFiltro = partidoFiltro ? ` — ${partidoFiltro}` : "";
     $("#ap-candidatos-titulo").textContent = (totalGeral > 0 ? "Candidatos mais votados" : "Candidatos registrados (ordem alfabética — aguardando votos)") + sufixoFiltro;
     $("#ap-candidatos").innerHTML = top.length ? top.map((c, i) => `
       <div class="ap-cand-row">
         <div class="ap-cand-rank">${i + 1}º</div>
-        <div class="ap-cand-nome"><b>${esc(c.nome)}</b><span>${esc(c.partido)}${c.situacao ? " · " + esc(c.situacao) : (totalGeral > 0 && i < cargo.vagas && !cargo.proporcional ? " · eleito(a) no momento" : "")}</span></div>
+        <div class="ap-cand-nome"><b>${esc(c.nome)}</b><span>${esc(c.partido)}${c.vice ? " · vice " + esc(c.vice) : ""}${c.situacao ? " · " + esc(c.situacao) : (totalGeral > 0 && i < cargo.vagas && !cargo.proporcional ? " · na frente" : "")}</span></div>
         <div class="ap-cand-votos"><b>${fmtN(c.votos)}</b></div>
       </div>`).join("") : `<div class="vazio">${partidoFiltro ? "Esse partido não tem candidato registrado nesse cargo." : "Nenhum candidato registrado para esse cargo ainda."}</div>`;
   }
@@ -376,14 +336,28 @@
   // sabia (mesmo que zero voto), em vez de ficar em branco esperando a rede de novo.
   const cacheUltimoPorCargo = {};
 
+  // Reconstrói as opções do filtro a partir dos candidatos que realmente estão na lista (o arquivo
+  // do TSE pode trazer um partido que o roster não tinha), mantendo a seleção atual se ainda existir.
+  function sincronizarOpcoesFiltro(candidatos) {
+    const sel = $("#ap-filtro-partido");
+    if (!sel) return;
+    const partidos = [...new Set(candidatos.map(c => c.partido).filter(Boolean))].sort();
+    const atuais = [...sel.options].slice(1).map(o => o.value);
+    if (partidos.join("|") === atuais.join("|")) return;
+    sel.innerHTML = '<option value="">Todos os partidos</option>' + partidos.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join("");
+    if (partidos.includes(partidoFiltro)) sel.value = partidoFiltro; else { sel.value = ""; partidoFiltro = ""; }
+  }
+
   function renderComDados(cargoKey, json, erro) {
     const cargo = CARGOS[cargoKey];
-    const candidatos = mesclarComRoster(json ? extrairCandidatos(json) : [], cargoKey);
-    const totalGeral = candidatos.reduce((a, c) => a + c.votos, 0);
-    const votosLegenda = json ? extrairVotosLegendaPorPartido(json) : {};
-    const projecao = calcularProjecaoVagas(candidatos, cargo.vagas, cargo.proporcional, votosLegenda);
+    const candidatos = candidatosDoCargo(json, cargoKey);
+    const projecao = calcularProjecaoVagas(candidatos, cargo.vagas, cargo.proporcional, extrairVotosLegendaPorAgrupamento(json));
+    // Votos válidos: o total oficial do TSE quando existe (inclui legenda); senão a soma que temos.
+    const vvTSE = json && json.v ? numInt(json.v.vv) : 0;
+    const totalGeral = vvTSE || projecao.totalGeral;
     ultimoCandidatosRenderizados = candidatos;
     ultimoCargoRenderizado = cargo;
+    sincronizarOpcoesFiltro(candidatos);
     renderStatus(json, erro);
     renderKpis(candidatos, totalGeral, cargo);
     renderPartidos(projecao);
@@ -394,19 +368,17 @@
     if (buscando) return;
     buscando = true;
     // Captura o cargo ATIVO NESTE MOMENTO — se o usuário trocar de aba enquanto esse
-    // fetch ainda está em voo (proxy lento), não queremos misturar o cabeçalho de um
-    // cargo com a lista de candidatos de outro quando a resposta finalmente chegar.
+    // fetch ainda está em voo, não queremos misturar o cabeçalho de um cargo com a lista
+    // de candidatos de outro quando a resposta finalmente chegar.
     const cargoKey = cargoAtivo;
     const cargo = CARGOS[cargoKey];
     $("#btn-ap-atualizar").disabled = true;
-    let json = null, erro = null;
-    try {
-      json = await buscarResultadoEstado(cargoKey, cargo);
-      if (!json) erro = "não encontrei o arquivo de resultado ainda";
-      else ultimoResultado = json;
-    } catch (e) {
-      erro = e.message;
-    }
+    const busca = await buscarResultadoEstado(cargoKey, cargo);
+    const erro = busca.erro;
+    // Falha passageira de rede NÃO pode apagar os números já na tela: mantém o último arquivo bom.
+    const anterior = cacheUltimoPorCargo[cargoKey];
+    const json = busca.json || (anterior && anterior.json) || null;
+    if (busca.json) ultimoResultado = busca.json;
     buscando = false;
     $("#btn-ap-atualizar").disabled = false;
     cacheUltimoPorCargo[cargoKey] = { json, erro };
@@ -426,7 +398,7 @@
     if (cargoAtivo === id) return;
     cargoAtivo = id;
     $$("#ap-cargo-abas .chip-filtro").forEach(b => b.classList.toggle("ativo", b.dataset.cargo === id));
-    $("#ap-sub").textContent = `${CARGOS[id].nome} no Paraná — dados oficiais do TSE, direto da fonte`;
+    $("#ap-sub").textContent = `${CARGOS[id].nome} ${CARGOS[id].uf === "br" ? "— resultado nacional" : "no Paraná"} — dados oficiais do TSE, direto da fonte`;
     popularFiltroPartido(id); // lista de partidos é por cargo — reseta pro cargo novo
     const det = $("#ap-mun-detalhe");
     if (det) det.innerHTML = "";
@@ -464,22 +436,23 @@
     if (!codTse) { det.innerHTML = '<div class="vazio">Não encontrei o código TSE deste município.</div>'; return; }
     // Município é sempre dos 5 cargos de uma vez — não depende da aba selecionada acima.
     const porCargo = await Promise.all(Object.entries(CARGOS).map(async ([key, cargo]) => {
-      let json = null;
-      try { json = await buscarResultadoMunicipio(codTse, key, cargo); } catch (e) { /* mostra "ainda não disponível" */ }
-      return { cargo, json };
+      const { json, erro } = await buscarResultadoMunicipio(codTse, key, cargo);
+      return { cargo, json, erro };
     }));
     det.innerHTML = `<div style="font-size:12.5px;color:var(--tx3);margin-bottom:12px"><b>${esc(m.nome)}</b> — apuração local nos 5 cargos</div>` +
-      porCargo.map(({ cargo, json }) => {
+      porCargo.map(({ cargo, json, erro }) => {
         if (!json) {
-          return `<div style="margin-bottom:16px"><div style="font-weight:600;margin-bottom:6px">${esc(cargo.nome)}</div><div class="vazio">Apuração ainda não disponível.</div></div>`;
+          return `<div style="margin-bottom:16px"><div style="font-weight:600;margin-bottom:6px">${esc(cargo.nome)}</div><div class="vazio">Apuração ainda não disponível (${esc(erro || "sem resposta")}).</div></div>`;
         }
-        const candidatos = extrairCandidatos(json).sort((a, b) => b.votos - a.votos).slice(0, cargo.proporcional ? 10 : cargo.vagas + 4);
+        const todos = extrairCandidatos(json);
+        const temVotos = todos.some(c => c.votos > 0);
+        const candidatos = ordenarCandidatos(todos, temVotos).slice(0, cargo.proporcional ? 10 : cargo.vagas + 4);
         const pct = extrairPercentualApurado(json);
         return `<div style="margin-bottom:16px">
           <div style="font-weight:600;margin-bottom:6px">${esc(cargo.nome)} <span style="font-size:11px;color:var(--tx3);font-weight:400">— ${pct.toFixed(1).replace(".", ",")}% apurado</span></div>
-          ${candidatos.length ? `<table class="tab"><thead><tr><th>#</th><th>Candidato</th><th>Partido</th><th class="num">Votos</th></tr></thead><tbody>
+          ${candidatos.length && temVotos ? `<table class="tab"><thead><tr><th>#</th><th>Candidato</th><th>Partido</th><th class="num">Votos</th></tr></thead><tbody>
             ${candidatos.map((c, i) => `<tr><td>${i + 1}º</td><td><b>${esc(c.nome)}</b></td><td>${esc(c.partido)}</td><td class="num">${fmtN(c.votos)}</td></tr>`).join("")}
-            </tbody></table>` : '<div class="vazio">Sem votos apurados ainda.</div>'}
+            </tbody></table>` : '<div class="vazio">A apuração ainda não começou neste município.</div>'}
         </div>`;
       }).join("");
   };
@@ -496,7 +469,7 @@
       partidoFiltro = e.target.value;
       if (ultimoCargoRenderizado) renderCandidatos(ultimoCandidatosRenderizados, ultimoCargoRenderizado);
     };
-    timerAtualizacao = setInterval(atualizar, 60000);
+    timerAtualizacao = setInterval(atualizar, 30000);
   }
 
   function render() {
