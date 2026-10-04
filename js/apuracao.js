@@ -320,7 +320,7 @@
       const pct = max ? (p.total / max * 100) : 0;
       const legendaTxt = p.votosLegenda ? ` <span style="color:var(--tx3)">(${fmtN(p.votosLegenda)} de legenda)</span>` : "";
       const eleitosTxt = p.eleitos ? `<b>${p.eleitos}</b> eleito${p.eleitos > 1 ? "s" : ""} confirmado${p.eleitos > 1 ? "s" : ""}<br>` : "";
-      const vagasTxt = projecao.proporcional ? `<b>${p.vagasTotal}</b> vaga(s) ${p.oficial ? "(TSE)" : "projetada(s)"}<br>` : "";
+      const vagasTxt = projecao.proporcional ? `<b${p.oficial && p.vagasTotal > 0 ? ' style="color:var(--ok)"' : ""}>${p.vagasTotal}</b> vaga(s) ${p.oficial ? "(TSE)" : "projetada(s)"}<br>` : "";
       return `<div class="ap-partido-row">
         <div class="ap-partido-sigla" style="color:${cor}">${esc(p.partido)}</div>
         <div class="ap-partido-bar"><div style="width:${pct}%;background:${cor}"></div></div>
@@ -342,9 +342,9 @@
     const sufixoFiltro = partidoFiltro ? ` — ${partidoFiltro.slice(4)}` : "";
     $("#ap-candidatos-titulo").textContent = (totalGeral > 0 ? "Candidatos mais votados" : "Candidatos registrados (ordem alfabética — aguardando votos)") + sufixoFiltro;
     $("#ap-candidatos").innerHTML = top.length ? top.map((c, i) => `
-      <div class="ap-cand-row">
+      <div class="ap-cand-row${c.eleito || c.eleitoProj ? " eleito" : ""}">
         <div class="ap-cand-rank">${i + 1}º</div>
-        <div class="ap-cand-nome"><b>${esc(c.nome)}</b><span>${esc(c.partido)}${c.vice ? " · vice " + esc(c.vice) : ""}${c.situacao ? " · " + esc(c.situacao) : (c.eleitoProj ? " · eleito(a) (projeção TSE)" : totalGeral > 0 && i < cargo.vagas && !cargo.proporcional ? " · na frente" : "")}</span></div>
+        <div class="ap-cand-nome"><b>${esc(c.nome)}</b>${c.eleito ? '<span class="ap-selo">✔ ELEITO</span>' : c.eleitoProj ? '<span class="ap-selo proj">✔ ELEITO (projeção)</span>' : ""}<span>${esc(c.partido)}${c.vice ? " · vice " + esc(c.vice) : ""}${c.eleito ? (c.situacao && c.situacao !== "Eleito" ? " · " + esc(c.situacao) : "") : (c.situacao ? " · " + esc(c.situacao) : (!c.eleitoProj && totalGeral > 0 && i < cargo.vagas && !cargo.proporcional ? " · na frente" : ""))}</span></div>
         <div class="ap-cand-votos"><b>${fmtN(c.votos)}</b>${totalGeral > 0 ? `<span>${fmtPct(c.pct)}</span>` : ""}</div>
       </div>`).join("") : `<div class="vazio">${partidoFiltro ? "Esse partido não tem candidato registrado nesse cargo." : "Nenhum candidato registrado para esse cargo ainda."}</div>`;
   }
