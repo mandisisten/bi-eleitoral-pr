@@ -302,12 +302,15 @@
 
   function renderCandidatos(candidatos, cargo) {
     const totalGeral = candidatos.reduce((a, c) => a + c.votos, 0);
-    const filtrados = partidoFiltro ? candidatos.filter(c => c.partido === partidoFiltro) : candidatos;
+    // partidoFiltro = "agr:<federação/coligação/partido isolado>" ou "par:<sigla individual>"
+    const filtrados = partidoFiltro
+      ? candidatos.filter(c => partidoFiltro.startsWith("agr:") ? c.agrupamento === partidoFiltro.slice(4) : c.partido === partidoFiltro.slice(4))
+      : candidatos;
     // Sem filtro, lista é só uma amostra (top 20) — com um partido escolhido, mostra a chapa
     // inteira dele (pode passar de 20 em Dep. Federal/Estadual com federação grande).
     const ordenados = ordenarCandidatos(filtrados, totalGeral > 0);
     const top = partidoFiltro ? ordenados : ordenados.slice(0, 20);
-    const sufixoFiltro = partidoFiltro ? ` — ${partidoFiltro}` : "";
+    const sufixoFiltro = partidoFiltro ? ` — ${partidoFiltro.slice(4)}` : "";
     $("#ap-candidatos-titulo").textContent = (totalGeral > 0 ? "Candidatos mais votados" : "Candidatos registrados (ordem alfabética — aguardando votos)") + sufixoFiltro;
     $("#ap-candidatos").innerHTML = top.length ? top.map((c, i) => `
       <div class="ap-cand-row">
@@ -322,11 +325,21 @@
   let partidoFiltro = "";
   let ultimoCandidatosRenderizados = [];
   let ultimoCargoRenderizado = null;
+  // Opções: federações/coligações (agremiações com mais de um partido) + partidos individuais.
+  function htmlOpcoesFiltro(candidatos) {
+    const agrs = [...new Set(candidatos.map(c => c.agrupamento).filter(a => a && a.includes("/")))].sort();
+    const partidos = [...new Set(candidatos.map(c => c.partido).filter(Boolean))].sort();
+    const opt = (v, t) => `<option value="${esc(v)}">${esc(t)}</option>`;
+    return '<option value="">Todos os partidos</option>'
+      + (agrs.length ? `<optgroup label="Federações / coligações">${agrs.map(a => opt("agr:" + a, a)).join("")}</optgroup>` : "")
+      + `<optgroup label="Partidos">${partidos.map(p => opt("par:" + p, p)).join("")}</optgroup>`;
+  }
   function popularFiltroPartido(cargoKey) {
     const sel = $("#ap-filtro-partido");
     if (!sel) return;
-    const partidos = [...new Set(candidatosDoRoster(cargoKey).map(c => c.partido).filter(Boolean))].sort();
-    sel.innerHTML = '<option value="">Todos os partidos</option>' + partidos.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join("");
+    const html = htmlOpcoesFiltro(candidatosDoRoster(cargoKey));
+    sel.dataset.opcoes = html;
+    sel.innerHTML = html;
     sel.value = "";
     partidoFiltro = "";
   }
@@ -341,11 +354,11 @@
   function sincronizarOpcoesFiltro(candidatos) {
     const sel = $("#ap-filtro-partido");
     if (!sel) return;
-    const partidos = [...new Set(candidatos.map(c => c.partido).filter(Boolean))].sort();
-    const atuais = [...sel.options].slice(1).map(o => o.value);
-    if (partidos.join("|") === atuais.join("|")) return;
-    sel.innerHTML = '<option value="">Todos os partidos</option>' + partidos.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join("");
-    if (partidos.includes(partidoFiltro)) sel.value = partidoFiltro; else { sel.value = ""; partidoFiltro = ""; }
+    const html = htmlOpcoesFiltro(candidatos);
+    if (sel.dataset.opcoes === html) return;
+    sel.dataset.opcoes = html;
+    sel.innerHTML = html;
+    if ([...sel.options].some(o => o.value === partidoFiltro)) sel.value = partidoFiltro; else { sel.value = ""; partidoFiltro = ""; }
   }
 
   function renderComDados(cargoKey, json, erro) {
