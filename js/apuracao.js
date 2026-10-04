@@ -321,7 +321,9 @@
       const legendaTxt = p.votosLegenda ? ` <span style="color:var(--tx3)">(${fmtN(p.votosLegenda)} de legenda)</span>` : "";
       const eleitosTxt = p.eleitos ? `<b>${p.eleitos}</b> eleito${p.eleitos > 1 ? "s" : ""} confirmado${p.eleitos > 1 ? "s" : ""}<br>` : "";
       const vagasTxt = projecao.proporcional ? `<b${p.oficial && p.vagasTotal > 0 ? ' style="color:var(--ok)"' : ""}>${p.vagasTotal}</b> vaga(s) ${p.oficial ? "(TSE)" : "projetada(s)"}<br>` : "";
-      return `<div class="ap-partido-row">
+      // valor igual ao do <select>: federação/coligação = "agr:", partido isolado = "par:"
+      const filtro = (projecao.proporcional && p.partido.includes("/") ? "agr:" : "par:") + p.partido;
+      return `<div class="ap-partido-row clicavel${partidoFiltro === filtro ? " sel" : ""}" data-filtro="${esc(filtro)}" title="Ver os candidatos de ${esc(p.partido)}">
         <div class="ap-partido-sigla" style="color:${cor}">${esc(p.partido)}</div>
         <div class="ap-partido-bar"><div style="width:${pct}%;background:${cor}"></div></div>
         <div class="ap-partido-vagas">${vagasTxt}${eleitosTxt}${fmtN(p.total)} votos${projecao.totalGeral > 0 ? " · " + fmtPct(p.total / projecao.totalGeral * 100) : ""}${legendaTxt}</div>
@@ -507,9 +509,21 @@
     popularBuscaMunicipio();
     $("#btn-ap-atualizar").onclick = atualizar;
     $$("#ap-cargo-abas .chip-filtro").forEach(b => b.onclick = () => trocarCargo(b.dataset.cargo));
-    $("#ap-filtro-partido").onchange = e => {
-      partidoFiltro = e.target.value;
+    const aplicarFiltro = valor => {
+      partidoFiltro = valor;
+      const sel = $("#ap-filtro-partido");
+      if (valor && ![...sel.options].some(o => o.value === valor)) sel.add(new Option(valor.slice(4), valor));
+      sel.value = valor;
+      $$("#ap-partidos .ap-partido-row").forEach(r => r.classList.toggle("sel", !!valor && r.dataset.filtro === valor));
       if (ultimoCargoRenderizado) renderCandidatos(ultimoCandidatosRenderizados, ultimoCargoRenderizado);
+    };
+    $("#ap-filtro-partido").onchange = e => aplicarFiltro(e.target.value);
+    // Clicar num partido do gráfico filtra a lista de candidatos por ele (clicar de novo limpa).
+    $("#ap-partidos").onclick = e => {
+      const linha = e.target.closest(".ap-partido-row");
+      if (!linha) return;
+      aplicarFiltro(partidoFiltro === linha.dataset.filtro ? "" : linha.dataset.filtro);
+      if (partidoFiltro) $("#ap-candidatos-titulo").scrollIntoView({ behavior: "smooth", block: "start" });
     };
     timerAtualizacao = setInterval(atualizar, 30000);
   }
