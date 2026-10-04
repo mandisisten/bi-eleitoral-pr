@@ -155,16 +155,22 @@
   function extrairPercentualApurado(json) {
     return json && json.s ? numBR(json.s.pst) : 0;
   }
-  /* Votos de legenda (eleitor que digitou só o número do partido): contam pro total/quociente
-     da agremiação mas não pertencem a nenhum candidato. Vêm em par.tvtl, somados por agremiação. */
-  function extrairVotosLegendaPorAgrupamento(json) {
-    const out = {};
+  /* Números OFICIAIS do TSE por agremiação (conferido em 04/10 com 99% apurado):
+       agr.vag     vagas já distribuídas pelo TSE (soma = nº de cadeiras)        carg.qe  quociente eleitoral oficial
+       par.tvtn    votos nominais VÁLIDOS (a soma de cand.vap inclui anulados sub judice e passa disso)
+       par.tvtl    votos de legenda (soma bate com v.vl)
+     Preferimos esses números à nossa conta (a projeção própria só entra quando o TSE ainda não distribuiu vagas). */
+  function extrairOficial(json) {
+    const resumo = {};
     extrairAgrs(json).forEach(agr => {
       const chave = agr.com || ((agr.par || [])[0] || {}).sg || "";
-      const legenda = (agr.par || []).reduce((a, p) => a + numInt(p.tvtl), 0);
-      if (chave && legenda) out[chave] = (out[chave] || 0) + legenda;
+      if (!chave) return;
+      const r = resumo[chave] || (resumo[chave] = { vag: 0, tvtn: 0, tvtl: 0 });
+      r.vag += numInt(agr.vag);
+      (agr.par || []).forEach(p => { r.tvtn += numInt(p.tvtn); r.tvtl += numInt(p.tvtl); });
     });
-    return out;
+    const carg = json && json.carg && json.carg[0];
+    return { resumo, qe: carg ? numInt(carg.qe) : 0 };
   }
 
   /* ---------- Projeção de vagas ----------
@@ -174,7 +180,7 @@
      eleitos os N mais votados (aqui só mostramos quem está na frente, sem
      simular 2º turno). "votosLegendaPorPartido" soma no total do partido
      (conta pro quociente real) mas não pertence a nenhum candidato. */
-  function calcularProjecaoVagas(candidatos, vagas, proporcional, votosLegendaPorPartido) {
+  function calcularProjecaoVagas(candidatos, vagas, proporcional, oficial) {
     const porPartido = {};
     candidatos.forEach(c => {
       // Proporcional: a unidade do quociente é a agremiação (federação conta como UM partido só,
@@ -186,14 +192,30 @@
       porPartido[p].candidatos.push(c);
       if (c.eleito) porPartido[p].eleitos++;
     });
-    Object.entries(votosLegendaPorPartido || {}).forEach(([partido, votos]) => {
-      if (!porPartido[partido]) porPartido[partido] = { partido, total: 0, votosNominais: 0, votosLegenda: 0, eleitos: 0, candidatos: [] };
-      porPartido[partido].votosLegenda += votos;
-      porPartido[partido].total += votos;
+    // Proporcional: total do partido = nominais VÁLIDOS (tvtn) + legenda (tvtl), como o TSE conta.
+    const resumo = (proporcional && oficial && oficial.resumo) || {};
+    Object.entries(resumo).forEach(([chave, r]) => {
+      if (!porPartido[chave]) porPartido[chave] = { partido: chave, total: 0, votosNominais: 0, votosLegenda: 0, eleitos: 0, candidatos: [] };
+      const p = porPartido[chave];
+      p.votosNominais = r.tvtn > 0 ? r.tvtn : p.votosNominais;
+      p.votosLegenda = r.tvtl;
+      p.total = p.votosNominais + p.votosLegenda;
     });
     const totalGeral = Object.values(porPartido).reduce((a, p) => a + p.total, 0);
     const lista = Object.values(porPartido);
     lista.sort((a, b) => b.total - a.total);
+
+    // O TSE já distribuiu as vagas: usa a distribuição oficial (inclui as regras de sobra que a
+    // nossa conta simplificada não tem). Os eleitos de cada partido = os mais votados dentro dele.
+    const vagOficial = Object.values(resumo).reduce((a, r) => a + r.vag, 0);
+    if (proporcional && vagOficial > 0) {
+      lista.forEach(p => {
+        const r = resumo[p.partido];
+        p.vagasTotal = r ? r.vag : 0; p.vagasQP = p.vagasTotal; p.vagasSobra = 0; p.oficial = true;
+        [...p.candidatos].sort((a, b) => b.votos - a.votos).slice(0, p.vagasTotal).forEach(c => { if (c.votos > 0) c.eleitoProj = true; });
+      });
+      return { lista, qe: oficial.qe, totalGeral, proporcional: true, oficial: true };
+    }
 
     if (!proporcional || totalGeral === 0) {
       // majoritário: não há "vaga por partido" de verdade — cada vaga é de um candidato.
@@ -272,19 +294,24 @@
   }
 
   function renderKpis(candidatos, totalGeral, cargo) {
-    const eleitos = candidatos.filter(c => c.eleito).length;
+    const confirmados = candidatos.filter(c => c.eleito).length;
+    const projetados = candidatos.filter(c => c.eleitoProj).length;
+    const eleitos = confirmados || projetados;
+    const rotuloEleitos = confirmados ? "Eleitos confirmados" : (projetados ? "Vagas definidas (projeção TSE)" : "Eleitos confirmados");
     const liderA = totalGeral > 0 ? [...candidatos].sort((a, b) => b.votos - a.votos)[0] : null;
     $("#ap-kpis").innerHTML = `
       <div class="card-kpi destaque"><div class="rotulo">Votos válidos (${esc(cargo.nome)})</div><div class="valor">${fmtN(totalGeral)}</div></div>
       <div class="card-kpi"><div class="rotulo">Candidatos no pleito</div><div class="valor">${candidatos.length}</div></div>
-      <div class="card-kpi"><div class="rotulo">${cargo.proporcional ? "Eleitos confirmados" : "Vaga(s) em disputa"}</div><div class="valor">${cargo.proporcional ? eleitos : cargo.vagas} <span style="font-size:13px;color:var(--tx3)">${cargo.proporcional ? "/ " + cargo.vagas : ""}</span></div></div>
+      <div class="card-kpi"><div class="rotulo">${cargo.proporcional ? rotuloEleitos : "Vaga(s) em disputa"}</div><div class="valor">${cargo.proporcional ? eleitos : cargo.vagas} <span style="font-size:13px;color:var(--tx3)">${cargo.proporcional ? "/ " + cargo.vagas : ""}</span></div></div>
       <div class="card-kpi"><div class="rotulo">Mais votado no momento</div><div class="valor" style="font-size:16px">${liderA ? esc(liderA.nome) : "—"}</div>
         <div class="extra">${liderA ? fmtN(liderA.votos) + " votos · " + fmtPct(liderA.pct) + " (" + esc(liderA.partido) + ")" : "Aguardando apuração"}</div></div>`;
   }
 
   function renderPartidos(projecao) {
-    $("#ap-partidos-titulo").textContent = projecao.proporcional ? "Por partido — votos e vagas projetadas" : "Por partido — total de votos";
-    $("#ap-partidos-nota").textContent = projecao.proporcional
+    $("#ap-partidos-titulo").textContent = projecao.proporcional ? (projecao.oficial ? "Por partido — votos e vagas (TSE)" : "Por partido — votos e vagas projetadas") : "Por partido — total de votos";
+    $("#ap-partidos-nota").textContent = projecao.oficial
+      ? `Vagas por partido conforme a totalização oficial do TSE (quociente eleitoral ${fmtN(projecao.qe)}), com votos nominais válidos + legenda. Em cada partido, os eleitos são os mais votados dele.`
+      : projecao.proporcional
       ? "Projeção recalculada a cada atualização com o quociente eleitoral sobre os votos já apurados (quociente partidário + sobras por maiores médias) — mesmo método validado no Simulador de Chapa."
       : "Cargo majoritário — não há vaga \"por partido\" (quem é eleito são os candidatos mais votados, veja ao lado). Aqui é só o total agregado de votos de cada partido.";
     const max = projecao.lista[0] ? projecao.lista[0].total : 1;
@@ -293,7 +320,7 @@
       const pct = max ? (p.total / max * 100) : 0;
       const legendaTxt = p.votosLegenda ? ` <span style="color:var(--tx3)">(${fmtN(p.votosLegenda)} de legenda)</span>` : "";
       const eleitosTxt = p.eleitos ? `<b>${p.eleitos}</b> eleito${p.eleitos > 1 ? "s" : ""} confirmado${p.eleitos > 1 ? "s" : ""}<br>` : "";
-      const vagasTxt = projecao.proporcional ? `<b>${p.vagasTotal}</b> vaga(s) projetada(s)<br>` : "";
+      const vagasTxt = projecao.proporcional ? `<b>${p.vagasTotal}</b> vaga(s) ${p.oficial ? "(TSE)" : "projetada(s)"}<br>` : "";
       return `<div class="ap-partido-row">
         <div class="ap-partido-sigla" style="color:${cor}">${esc(p.partido)}</div>
         <div class="ap-partido-bar"><div style="width:${pct}%;background:${cor}"></div></div>
@@ -317,7 +344,7 @@
     $("#ap-candidatos").innerHTML = top.length ? top.map((c, i) => `
       <div class="ap-cand-row">
         <div class="ap-cand-rank">${i + 1}º</div>
-        <div class="ap-cand-nome"><b>${esc(c.nome)}</b><span>${esc(c.partido)}${c.vice ? " · vice " + esc(c.vice) : ""}${c.situacao ? " · " + esc(c.situacao) : (totalGeral > 0 && i < cargo.vagas && !cargo.proporcional ? " · na frente" : "")}</span></div>
+        <div class="ap-cand-nome"><b>${esc(c.nome)}</b><span>${esc(c.partido)}${c.vice ? " · vice " + esc(c.vice) : ""}${c.situacao ? " · " + esc(c.situacao) : (c.eleitoProj ? " · eleito(a) (projeção TSE)" : totalGeral > 0 && i < cargo.vagas && !cargo.proporcional ? " · na frente" : "")}</span></div>
         <div class="ap-cand-votos"><b>${fmtN(c.votos)}</b>${totalGeral > 0 ? `<span>${fmtPct(c.pct)}</span>` : ""}</div>
       </div>`).join("") : `<div class="vazio">${partidoFiltro ? "Esse partido não tem candidato registrado nesse cargo." : "Nenhum candidato registrado para esse cargo ainda."}</div>`;
   }
@@ -366,7 +393,7 @@
   function renderComDados(cargoKey, json, erro) {
     const cargo = CARGOS[cargoKey];
     const candidatos = candidatosDoCargo(json, cargoKey);
-    const projecao = calcularProjecaoVagas(candidatos, cargo.vagas, cargo.proporcional, extrairVotosLegendaPorAgrupamento(json));
+    const projecao = calcularProjecaoVagas(candidatos, cargo.vagas, cargo.proporcional, extrairOficial(json));
     // Votos válidos: o total oficial do TSE quando existe (inclui legenda); senão a soma que temos.
     const vvTSE = json && json.v ? numInt(json.v.vv) : 0;
     const totalGeral = vvTSE || projecao.totalGeral;
