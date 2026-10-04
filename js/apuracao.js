@@ -48,7 +48,7 @@
 
   // Vira true pro cargo certo (Presidente/Governador) no dia em que confirmar que teve 2º turno
   // — aí a busca passa a usar cdEleicaoT2 em vez de cdEleicao. Ver função cdEleicaoAtual().
-  const TURNO2 = { presidente: false, governador: false };
+  const TURNO2 = window.APURACAO_TURNO2 || { presidente: false, governador: false };
   function cdEleicaoAtual(cargoKey, cargo) {
     return (TURNO2[cargoKey] && cargo.cdEleicaoT2) ? cargo.cdEleicaoT2 : cargo.cdEleicao;
   }

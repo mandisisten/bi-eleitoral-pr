@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comparar candidatos no mapa — Eleições 2026 Paraná</title>
+<meta name="description" content="Compare dois candidatos município a município no Paraná, com os votos reais da apuração oficial do TSE, direto no mapa.">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{
+  --bg:#0B1120; --bg2:#0F172A; --card:#151F35; --card2:#182238; --border:#26334D;
+  --tx:#F8FAFC; --tx2:#94A3B8; --tx3:#64748B;
+  --pri:#3B82F6; --pri2:#60A5FA; --ok:#22C55E; --warn:#F59E0B; --err:#EF4444; --verde-pr:#22C55E;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--tx);font-size:14px;-webkit-font-smoothing:antialiased}
+a{color:var(--pri2)}
+button{font-family:inherit}
+input,select{font-family:inherit;font-size:13px;background:var(--bg2);border:1px solid var(--border);color:var(--tx);border-radius:8px;padding:9px 11px;outline:none;width:100%}
+input:focus,select:focus{border-color:var(--pri)}
+label{font-size:12px;color:var(--tx2);display:block;margin-bottom:4px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--pri);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none}
+.btn.sec{background:var(--bg2);border:1px solid var(--border);color:var(--tx)}
+.btn.sec:hover{border-color:var(--pri)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.container{max-width:1100px;margin:0 auto;padding:0 20px 60px}
+.topo-site{display:flex;align-items:center;gap:10px;padding:16px 0 22px;border-bottom:1px solid var(--border);margin-bottom:22px;flex-wrap:wrap}
+.topo-site .marca{width:34px;height:34px;border-radius:9px;flex-shrink:0;background:linear-gradient(155deg,var(--pri),#2563eb);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:#fff}
+.topo-site b{font-size:15px;display:block;font-weight:800}
+.topo-site span{display:block;font-size:11px;color:var(--verde-pr);margin-top:1px;font-weight:700;letter-spacing:.06em}
+.topo-site .links{margin-left:auto}
+.cmp-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.cmp-header h1{font-size:20px}
+.cmp-header .sub{color:var(--tx2);font-size:12.5px;margin-top:3px}
+.live-badge{display:inline-flex;align-items:center;gap:6px;background:var(--err);color:#fff;font-size:11px;font-weight:800;padding:5px 11px;border-radius:20px;letter-spacing:.03em;vertical-align:middle}
+.live-badge .pt{width:7px;height:7px;border-radius:50%;background:#fff;animation:pisca 1.2s ease-in-out infinite}
+@keyframes pisca{0%,100%{opacity:1}50%{opacity:.3}}
+.info-ranking-abas{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.chip-filtro{padding:7px 14px;border-radius:20px;border:1px solid var(--border);background:var(--card);color:var(--tx2);font-size:12px;font-weight:600;cursor:pointer}
+.chip-filtro.ativo{background:var(--pri);border-color:var(--pri);color:#fff}
+.painel{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:16px}
+.painel h3{font-size:14.5px;font-weight:700;margin-bottom:14px}
+.seletores{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:end}
+.seletores .a input{border-color:#2563eb}
+.seletores .b input{border-color:#ea580c}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;margin-bottom:16px}
+.card-kpi{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:17px}
+.card-kpi .rotulo{font-size:10.5px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+.card-kpi .valor{font-size:26px;font-weight:800;margin-top:8px}
+.card-kpi .extra{font-size:11.5px;color:var(--tx3);margin-top:6px}
+.card-kpi.destaque{border-color:var(--pri);background:linear-gradient(150deg,var(--card) 0%,#152645 100%)}
+.status{font-size:12.5px;color:var(--tx2);margin:-4px 0 14px}
+#mapa{height:540px;border-radius:10px;background:var(--bg2)}
+.leaflet-container{background:var(--bg2)!important;font:inherit}
+.mapa-legenda{background:var(--card);padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:11px;color:var(--tx);line-height:1.7}
+.mapa-legenda i{display:inline-block;width:14px;height:11px;margin-right:5px;border-radius:2px;vertical-align:-1px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:1000px){.grid-2{grid-template-columns:1fr}}
+table.tab{width:100%;border-collapse:collapse;font-size:13px}
+table.tab th{color:var(--tx3);text-align:left;padding:10px 12px;background:var(--card2);border-bottom:1px solid var(--border);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+table.tab th.num,table.tab td.num{text-align:right}
+table.tab td{padding:10px 12px;border-bottom:1px solid var(--card2)}
+table.tab tbody tr:last-child td{border-bottom:none}
+.vazio{padding:24px;text-align:center;color:var(--tx3);font-size:13px}
+@media(max-width:860px){
+  .container{padding:0 14px 40px}
+  .seletores{grid-template-columns:1fr}
+  .seletores .meio{justify-self:start}
+  #mapa{height:420px}
+  table.tab thead{display:block}
+  table.tab thead tr{display:block}
+  table.tab thead th{display:block;position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+  table.tab, table.tab tbody{display:block;width:100%}
+  table.tab tr{display:block;background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:4px 14px;margin-bottom:10px}
+  table.tab td{display:block;text-align:left;padding:7px 0;border-bottom:1px solid #1e2740}
+  table.tab td:last-child{border-bottom:none}
+  table.tab td::before{content:attr(data-label);display:block;color:var(--tx3);font-size:10px;text-transform:uppercase;letter-spacing:.3px;font-weight:700;margin-bottom:2px}
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="topo-site">
+    <div class="marca">PR</div>
+    <div><b>BI Paraná</b><span>APURAÇÃO ELEITORAL · ACESSO PÚBLICO</span></div>
+    <div class="links"><a class="btn sec" href="apuracao-publica.html">← Apuração ao vivo</a></div>
+  </div>
+
+  <div class="cmp-header">
+    <div>
+      <h1>Comparar candidatos no mapa <span class="live-badge"><span class="pt"></span>VOTOS REAIS</span></h1>
+      <div class="sub">Escolha dois candidatos e veja, município por município, quem está na frente — com a apuração oficial do TSE.</div>
+    </div>
+    <button class="btn sec" id="btn-cmp-atualizar">🔄 Atualizar agora</button>
+  </div>
+
+  <div class="info-ranking-abas" id="cmp-cargo-abas">
+    <button class="chip-filtro" data-cargo="presidente">Presidente</button>
+    <button class="chip-filtro ativo" data-cargo="governador">Governador</button>
+    <button class="chip-filtro" data-cargo="senador">Senador</button>
+    <button class="chip-filtro" data-cargo="depfederal">Deputado Federal</button>
+    <button class="chip-filtro" data-cargo="depestadual">Deputado Estadual</button>
+  </div>
+
+  <div class="painel">
+    <div class="seletores">
+      <div class="a"><label>Candidato A (azul) — digite o nome pra buscar</label><input id="cmp-a" list="dl-cands" placeholder="Ex.: nome do candidato…" autocomplete="off"></div>
+      <div class="meio"><button class="btn sec" id="btn-cmp-trocar" title="Trocar A e B">⇄</button></div>
+      <div class="b"><label>Candidato B (laranja)</label><input id="cmp-b" list="dl-cands" placeholder="Ex.: nome do candidato…" autocomplete="off"></div>
+    </div>
+    <datalist id="dl-cands"></datalist>
+  </div>
+
+  <div class="status" id="cmp-status">Carregando…</div>
+  <div class="cards" id="cmp-cards"></div>
+
+  <div class="painel">
+    <h3 id="cmp-titulo-mapa">Escolha os dois candidatos acima</h3>
+    <div id="mapa"></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="painel"><h3 id="cmp-top-a-titulo">Onde A abre mais vantagem</h3><div id="cmp-top-a"></div></div>
+    <div class="painel"><h3 id="cmp-top-b-titulo">Onde B abre mais vantagem</h3><div id="cmp-top-b"></div></div>
+  </div>
+
+  <div style="text-align:center;font-size:11.5px;color:var(--tx3);margin-top:20px">
+    Dados direto do feed oficial do TSE (resultados.tse.jus.br), atualizados a cada 30 segundos. Página de acesso livre — sem login.
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="municipios-lista.js?v=1"></script>
+<script>
+  const MUNI = window.DADOS_PR_SLIM;
+  const MUNI_BY_ID = {};
+  MUNI.forEach(m => MUNI_BY_ID[m.id] = m);
+  window.MUNI_BY_ID = MUNI_BY_ID;
+</script>
+<script src="tse-municipios-pr.js?v=1"></script>
+<script src="turno.js?v=1"></script>
+<script src="js/comparar.js?v=1"></script>
+</body>
+</html>

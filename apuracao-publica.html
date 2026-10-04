@@ -122,7 +122,7 @@ table.tab tbody tr:hover{background:var(--card2)}
   <section id="page-apuracao">
     <div class="ap-header">
       <div><h1>Apuração — Eleições 2026 <span class="live-badge"><span class="pt"></span>AO VIVO</span></h1><div class="sub" id="ap-sub">Deputado Estadual no Paraná — dados oficiais do TSE, direto da fonte</div></div>
-      <div><button class="btn sec" id="btn-ap-atualizar">🔄 Atualizar agora</button></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn sec" style="text-decoration:none" href="comparar-candidatos.html">🗺️ Comparar candidatos no mapa</a><button class="btn sec" id="btn-ap-atualizar">🔄 Atualizar agora</button></div>
     </div>
 
     <div class="info-ranking-abas" id="ap-cargo-abas">
@@ -197,7 +197,8 @@ table.tab tbody tr:hover{background:var(--card2)}
 </script>
 <script src="tse-municipios-pr.js?v=1"></script>
 <script src="roster-candidatos-2026.js?v=2"></script>
-<script src="js/apuracao.js?v=12"></script>
+<script src="turno.js?v=1"></script>
+<script src="js/apuracao.js?v=13"></script>
 <script>PAGES.apuracao.render();</script>
 </body>
 </html>
